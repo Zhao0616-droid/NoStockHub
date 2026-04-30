@@ -214,3 +214,24 @@
 • 适用于课程设计场景，功能聚焦核心需求，无需复杂企业级定制
 
 • 部署环境为常规Web服务器，适配本地/轻量云服务器部署
+
+
+## 项目结构
+project-management-platform/
+├── docs/                  # 所有文档
+│   ├── user_stories.md    # 用户故事
+│   ├── use_cases.md       # 用例交互场景
+│   ├── architect.md       # 架构与类设计
+│   ├── ui_design.md       # 前端UI设计
+│   ├── backend_api.md     # 后端API文档
+│   ├── db.md              # 数据库设计
+│   ├── test.md            # 测试报告
+│   ├── install.md         # 安装部署文档
+│   ├── user_guid.md       # 使用说明书
+│   ├── ai.md              # AI使用记录
+│   └── assign.md          # 团队分工记录
+├── frontend/              # 前端代码
+├── backend/               # 后端代码
+├── sql/                   # 数据库脚本
+├── README.md              # 项目说明
+└── .gitignore
