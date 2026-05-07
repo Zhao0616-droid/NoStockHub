@@ -77,7 +77,8 @@ DATABASES = {
     }
 }
 
-AUTH_USER_MODEL = 'accounts.User'
+# TODO: 待 accounts 模块实现自定义 User 模型后恢复
+# AUTH_USER_MODEL = 'accounts.User'
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
