@@ -57,6 +57,11 @@ const routes = [
         path: 'settings',
         name: 'Settings',
         component: () => import('@/pages/settings/Index.vue')
+      },
+      {
+        path: 'demo/charts',
+        name: 'ChartDemo',
+        component: () => import('@/pages/demo/Charts.vue')
       }
     ]
   }

@@ -1,0 +1,52 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+*.log
+*.pot
+*.mo
+*.po
+*.db
+*.sqlite3
+.env
+.env.*
+venv/
+.venv/
+env/
+
+# ===== Node.js =====
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+package-lock.json
+yarn.lock
+
+# ===== IDE / Editor =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ===== Docker =====
+*.tar
+
+# ===== OS =====
+Desktop.ini
+
+# ===== Other =====
+*.tmp
+*.temp
+.cache/
+coverage/
+htmlcov/
+.coverage

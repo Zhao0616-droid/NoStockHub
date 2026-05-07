@@ -55,6 +55,10 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import {
+  Odometer, Folder, DataBoard, List,
+  Grid, TrendCharts, Timer, Document
+} from '@element-plus/icons-vue'
 
 defineProps({ isCollapse: Boolean })
 const route = useRoute()

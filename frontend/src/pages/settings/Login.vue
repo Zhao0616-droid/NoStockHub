@@ -20,6 +20,10 @@
         </el-form-item>
       </el-form>
       <p class="register-link">没有账号？<el-link type="primary" @click="showRegister = true">立即注册</el-link></p>
+      <el-divider style="margin: 16px 0" />
+      <el-button type="warning" size="small" class="dev-btn" @click="devLogin">
+        开发模式快速登录
+      </el-button>
     </div>
 
     <el-dialog v-model="showRegister" title="用户注册" width="420px">
@@ -96,6 +100,16 @@ async function handleRegister() {
     ElMessage.error('注册失败')
   }
 }
+
+function devLogin() {
+  localStorage.setItem('access_token', 'dev-mock-token')
+  localStorage.setItem('refresh_token', 'dev-mock-refresh')
+  auth.accessToken = 'dev-mock-token'
+  auth.refreshToken = 'dev-mock-refresh'
+  auth.user = { id: 'dev-1', username: '开发者', email: 'dev@test.com', role: 'admin' }
+  ElMessage.success('开发模式登录成功')
+  router.push('/dashboard')
+}
 </script>
 
 <style scoped lang="scss">
@@ -110,6 +124,7 @@ async function handleRegister() {
 .login-subtitle { text-align: center; font-size: 13px; color: #909399; margin-bottom: 28px; }
 .login-btn { width: 100%; }
 .register-link { text-align: center; font-size: 13px; color: #909399; margin-top: 12px; }
+.dev-btn { width: 100%; }
 </style>
 
 <script>
