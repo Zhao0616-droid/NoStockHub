@@ -8,31 +8,41 @@
 - 技术栈：前端Vue/React；后端SpringBoot/Django；数据库MySQL
 
 ## 团队成员
-| 班级 | 学号 | 姓名 | GitHub | 角色 |
-| ---- | ---- | ---- | ------------ | ---- |
-|软件2403|U202417380|赵嘉诚|Zhao0616-droid| 组长 |
-|软件2403|U202417375|王子琪|Liliz226| 组员 |
-|软件2403|U202417370|路昊天|lht622| 组员 |
-|软件2403|U202417382|周硕|hhh0164| 组员 |
-|软件2403|U202417369|刘经纬|lg997| 组员 |
-|软件2403|U202417374|王恒|beadeepr| 组员 |
-|软件2403|U202417373|万晶宇|wan-jingyu| 组员 |
-|软件2403|U202415693|胡博涵|HebIhe| 组员 |
+
+| 班级 | 学号 | 姓名 | GitHub | 角色 | 负责方向 |
+| ---- | ---- | ---- | ------------ | ---- | -------- |
+|软件2403|U202417380|赵嘉诚|Zhao0616-droid| 组长 | 后端架构 + 项目模块 |
+|软件2403|U202417375|王子琪|Liliz226| 组员 | 后端认证 + 通知 + 数据库 |
+|软件2403|U202417370|路昊天|lht622| 组员 | 前端仪表盘 + 项目页 + 公共组件 |
+|软件2403|U202417382|周硕|hhh0164| 组员 | 前端冲刺/报表页 + 部署测试 |
+|软件2403|U202417369|刘经纬|lg997| 组员 | 后端任务 + 工时模块 |
+|软件2403|U202417374|王恒|beadeepr| 组员 | 前端甘特图 + 看板 + 图表 |
+|软件2403|U202417373|万晶宇|wan-jingyu| 组员 | 前端架构 + 路由 + API层 |
+|软件2403|U202415693|胡博涵|HebIhe| 组员 | 后端看板/冲刺 + 文件/报表 |
 
 ## 模块分工
 1. 需求分析：王子琪
 2. 系统设计：赵嘉诚
-3. 前端开发：万晶宇
-4. 后端开发：王子琪
-5. 数据库：王子琪
-6. 测试与部署：王子琪
+3. 前端开发：
 
-## 进度安排
-- 阶段1：需求分析与用户故事（10学时）
-- 阶段2：系统设计（4学时）
-- 阶段3：编码实现（10学时）
-- 阶段4：测试调试（4学时）
-- 阶段5：部署与报告（4学时）
+| 成员 | 负责模块 | 具体任务 | 产出文件 |
+|------|---------|---------|---------|
+| **王子琪** | 前端架构 + Layout + 认证与路由 | `components/layout/` AppLayout/Navbar/Sidebar、`router/` 路由配置+导航守卫、`api/` Axios封装+全部API方法、Login+Settings页面、`stores/auth.js` | `layout/` `router/` `api/` `Login/` `Settings/` |
+| **路昊天** | Dashboard + Project 页面 + 公共组件 | 仪表盘页面(统计卡片/我的任务/活动线)、项目列表页(卡片网格/搜索筛选)、项目详情页(进度环/成员/里程碑)、TaskCard/TaskDialog/PriorityTag/StatusTag 组件、`stores/project.js` | `dashboard/` `project/` `common/` |
+| **万晶宇** | 甘特图 + 看板 + 任务列表 + 图表组件 | 甘特图页面(ECharts时间线/日周月视图)、任务看板(列拖拽/卡片/Drawer)、任务列表(表格/筛选/批量操作)、`components/charts/` 图表组件、`stores/task.js` + `stores/board.js` | `gantt/` `task/` `charts/` |
+| **胡博涵** | Sprint + Report 页面 + 部署与测试 | 冲刺管理页(燃尽图/启动完成)、报表页(生成表单/下载)、`stores/sprint.js` + `stores/notification.js`、Docker Compose 部署配置、前端测试用例 | `sprint/` `report/` `docker-compose.yml` |
+
+4. 后端开发：
+
+| 成员 | 负责模块 | 具体任务 | 产出文件 |
+|------|---------|---------|---------|
+| **王恒** | 后端架构 + projects + core | `config/` Django配置、`core/` BaseModel/权限/分页/异常、`apps/projects/` 项目CRUD/成员管理/里程碑/模板、路由汇总、后端代码Review | `config/` `core/` `apps/projects/` |
+| **刘经纬** | accounts + notifications + 数据库 | `apps/accounts/` 用户注册登录/JWT认证/角色权限/个人资料、`apps/notifications/` 通知系统、`sql/init.sql` 维护、Django Admin配置 | `apps/accounts/` `apps/notifications/` `sql/` |
+| **周硕** | tasks + worklogs | `apps/tasks/` 任务CRUD/状态流转/任务依赖/评论/@提及、`apps/worklogs/` 工时记录/汇总统计/费率管理、数据库迁移 | `apps/tasks/` `apps/worklogs/` |
+| **赵嘉诚** | kanban + sprints + files + reports | `apps/kanban/` 看板/列CRUD/任务移动、`apps/sprints/` 冲刺CRUD/燃尽图数据、`apps/files/` 文件上传/下载/安全校验、`apps/reports/` 报表异步生成(Celery) | `apps/kanban/` `apps/sprints/` `apps/files/` `apps/reports/` |
+
+5. 数据库：赵嘉诚
+6. 测试与部署：赵嘉诚
 
 ## 需求分析
 
@@ -167,21 +177,72 @@
 本项目已完成基础目录框架搭建，后续按模块在对应目录内补充实现内容。
 ```
 NoStockHub/
-project-management-platform/
-├── docs/                  # 所有文档
-│   ├── user_stories.md    # 用户故事
-│   ├── use_cases.md       # 用例交互场景
-│   ├── architect.md       # 架构与类设计
-│   ├── ui_design.md       # 前端UI设计
-│   ├── backend_api.md     # 后端API文档
-│   ├── db.md              # 数据库设计
-│   ├── test.md            # 测试报告
-│   ├── install.md         # 安装部署文档
-│   ├── user_guid.md       # 使用说明书
-│   ├── ai.md              # AI使用记录
-│   └── assign.md          # 团队分工记录
-├── frontend/              # 前端代码
-├── backend/               # 后端代码
-├── sql/                   # 数据库脚本
-└── README.md              # 项目说明
+├── docs/                       # 所有文档
+│   ├── user_stories.md         # 用户故事
+│   ├── use_cases.md            # 用例交互场景
+│   ├── architect.md            # 架构与类设计
+│   ├── ui_design.md            # 前端UI设计
+│   ├── backend_api.md          # 后端API文档
+│   ├── db.md                   # 数据库设计
+│   ├── test.md                 # 测试报告
+│   ├── install.md              # 安装部署文档
+│   ├── user_guid.md            # 使用说明书
+│   ├── ai.md                   # AI使用记录
+│   └── assign.md               # 团队分工记录
+├── frontend/                   # 前端 Vue 3 代码
+│   ├── public/
+│   ├── src/
+│   │   ├── api/                # Axios 接口封装
+│   │   ├── assets/images/      # 静态资源
+│   │   ├── components/         # 公共组件
+│   │   │   ├── layout/         # 布局组件
+│   │   │   ├── common/         # 通用组件
+│   │   │   └── charts/         # 图表组件
+│   │   ├── composables/        # 组合式函数
+│   │   ├── pages/              # 页面组件
+│   │   │   ├── dashboard/      # 仪表盘
+│   │   │   ├── project/        # 项目管理
+│   │   │   ├── task/           # 任务/看板
+│   │   │   ├── gantt/          # 甘特图
+│   │   │   ├── sprint/         # 冲刺管理
+│   │   │   ├── report/         # 报表
+│   │   │   └── settings/       # 系统设置
+│   │   ├── stores/             # Pinia 状态管理
+│   │   ├── router/             # 路由配置
+│   │   ├── utils/              # 工具函数
+│   │   ├── App.vue
+│   │   └── main.js
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.js
+│   └── Dockerfile
+├── backend/                    # 后端 Django 代码
+│   ├── config/                 # 项目配置
+│   │   ├── settings/
+│   │   │   ├── base.py         # 通用配置
+│   │   │   ├── dev.py          # 开发环境
+│   │   │   └── prod.py         # 生产环境
+│   │   ├── urls.py
+│   │   └── wsgi.py
+│   ├── apps/                   # 业务模块
+│   │   ├── accounts/           # 用户与认证
+│   │   ├── projects/           # 项目与成员
+│   │   ├── tasks/              # 任务与依赖
+│   │   ├── kanban/             # 看板
+│   │   ├── sprints/            # 冲刺管理
+│   │   ├── worklogs/           # 工时管理
+│   │   ├── notifications/      # 通知系统
+│   │   ├── reports/            # 报表生成
+│   │   └── files/              # 文件管理
+│   ├── core/                   # 公共基类与工具
+│   ├── tasks/                  # Celery 异步任务
+│   ├── manage.py
+│   ├── requirements.txt
+│   └── Dockerfile
+├── sql/                        # 数据库脚本
+│   ├── init.sql
+│   ├── migrations/
+│   └── seeds/
+├── docker-compose.yml
+└── README.md
 ```
