@@ -1,8 +1,11 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic import RedirectView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 urlpatterns = [
+    # 纯 API 后端无首页；根路径便于浏览器访问时跳到接口文档
+    path('', RedirectView.as_view(pattern_name='docs', permanent=False)),
     path('admin/', admin.site.urls),
     path('api/auth/', include('apps.accounts.urls')),
     path('api/projects/', include('apps.projects.urls')),
