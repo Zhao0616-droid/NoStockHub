@@ -5,7 +5,7 @@
 
     <div class="login-card">
       <h1 class="login-title">软件项目管理平台</h1>
-      <p class="login-subtitle">NoStackHub</p>
+      <p class="login-subtitle">NoStockHub</p>
       
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @keyup.enter="handleLogin">
         <el-form-item label="用户名" prop="username">
