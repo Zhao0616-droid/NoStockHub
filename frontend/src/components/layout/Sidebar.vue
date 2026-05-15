@@ -1,7 +1,7 @@
 <template>
   <div class="sidebar">
     <div class="logo">
-      <span v-if="!isCollapse">NoStackHub</span>
+      <span v-if="!isCollapse">NoStockHub</span>
       <span v-else>N</span>
     </div>
     <el-menu
@@ -55,6 +55,10 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import {
+  Odometer, Folder, DataBoard, List,
+  Grid, TrendCharts, Timer, Document
+} from '@element-plus/icons-vue'
 
 defineProps({ isCollapse: Boolean })
 const route = useRoute()

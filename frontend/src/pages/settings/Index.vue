@@ -1,95 +1,369 @@
 <template>
   <div class="settings-page">
-    <h2>系统设置</h2>
+    <h2 style="margin-bottom: 24px">系统设置</h2>
 
-    <el-row :gutter="16">
-      <el-col :span="12">
-        <!-- 个人资料 -->
-        <el-card header="个人资料">
-          <el-form :model="profile" label-width="80px">
+    <el-tabs type="border-card">
+      <!-- 个人资料 -->
+      <el-tab-pane label="个人资料">
+        <div class="tab-content">
+          <el-form :model="profile" label-width="100px" max-width="500px">
             <el-form-item label="用户名">
               <el-input v-model="profile.username" disabled />
             </el-form-item>
             <el-form-item label="邮箱">
-              <el-input v-model="profile.email" />
+              <el-input v-model="profile.email" placeholder="请输入邮箱" />
             </el-form-item>
             <el-form-item label="手机号">
-              <el-input v-model="profile.phone" />
+              <el-input v-model="profile.phone" placeholder="请输入手机号" />
             </el-form-item>
             <el-form-item label="头像">
-              <el-upload action="#" :show-file-list="false">
+              <div style="display: flex; align-items: center; gap: 16px">
                 <el-avatar :size="64" :src="profile.avatar" />
-              </el-upload>
+                <el-upload 
+                  action="#" 
+                  :auto-upload="false"
+                  accept="image/*"
+                  @change="handleAvatarChange"
+                  style="flex: 1"
+                >
+                  <el-button type="primary">选择图片</el-button>
+                </el-upload>
+              </div>
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" @click="saveProfile">保存</el-button>
+              <el-button type="primary" @click="saveProfile" :loading="saving">保存</el-button>
             </el-form-item>
           </el-form>
-        </el-card>
-      </el-col>
+        </div>
+      </el-tab-pane>
 
-      <el-col :span="12">
-        <!-- 安全设置 -->
-        <el-card header="安全设置" style="margin-bottom:16px">
-          <el-form label-width="100px">
+      <!-- 安全设置 -->
+      <el-tab-pane label="安全设置">
+        <div class="tab-content">
+          <el-form label-width="120px" max-width="500px">
             <el-form-item label="修改密码">
-              <el-button text type="primary" @click="showPassword = true">修改</el-button>
+              <el-button type="primary" @click="showPasswordDialog = true">修改密码</el-button>
             </el-form-item>
             <el-form-item label="双因素认证">
-              <el-switch v-model="twoFA" />
+              <el-switch 
+                v-model="twoFactorEnabled" 
+                @change="handleTwoFactorChange"
+                :loading="twoFactorLoading"
+              />
+              <span v-if="twoFactorEnabled" style="margin-left: 12px; color: #67c23a">已启用</span>
+              <span v-else style="margin-left: 12px; color: #f56c6c">已禁用</span>
             </el-form-item>
           </el-form>
-        </el-card>
+        </div>
+      </el-tab-pane>
 
-        <!-- 通知偏好 -->
-        <el-card header="通知偏好">
-          <el-checkbox-group v-model="notifPrefs">
-            <div class="notif-item"><el-checkbox value="task_assigned" label="任务分配通知" /></div>
-            <div class="notif-item"><el-checkbox value="status_change" label="状态变更通知" /></div>
-            <div class="notif-item"><el-checkbox value="comment" label="评论@提及通知" /></div>
-            <div class="notif-item"><el-checkbox value="email" label="邮件通知" /></div>
-          </el-checkbox-group>
-        </el-card>
-      </el-col>
-    </el-row>
+      <!-- 通知偏好 -->
+      <el-tab-pane label="通知偏好">
+        <div class="tab-content">
+          <el-form label-width="100px" max-width="500px">
+            <el-form-item label="通知类型">
+              <el-checkbox-group v-model="notificationPrefs">
+                <div class="notif-item">
+                  <el-checkbox value="task_assigned">任务分配通知</el-checkbox>
+                  <span class="notif-desc">当有新任务分配给我时通知</span>
+                </div>
+                <div class="notif-item">
+                  <el-checkbox value="status_change">状态变更通知</el-checkbox>
+                  <span class="notif-desc">当任务状态发生变更时通知</span>
+                </div>
+                <div class="notif-item">
+                  <el-checkbox value="comment_mention">评论@提及通知</el-checkbox>
+                  <span class="notif-desc">当评论中被@提及时通知</span>
+                </div>
+                <div class="notif-item">
+                  <el-checkbox value="email_notification">邮件通知</el-checkbox>
+                  <span class="notif-desc">启用邮件通知</span>
+                </div>
+              </el-checkbox-group>
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="saveNotificationPrefs" :loading="saving">保存偏好</el-button>
+            </el-form-item>
+          </el-form>
+        </div>
+      </el-tab-pane>
+
+      <!-- 主题设置 -->
+      <el-tab-pane label="主题设置">
+        <div class="tab-content">
+          <el-form label-width="100px" max-width="500px">
+            <el-form-item label="语言">
+              <el-select v-model="language" placeholder="选择语言">
+                <el-option label="简体中文" value="zh-CN" />
+                <el-option label="English" value="en-US" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="主题">
+              <el-radio-group v-model="theme">
+                <el-radio value="light">浅色主题</el-radio>
+                <el-radio value="dark">深色主题</el-radio>
+                <el-radio value="auto">跟随系统</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item label="字体大小">
+              <el-slider v-model="fontSize" :min="12" :max="18" :step="1" style="width: 200px" />
+              <span style="margin-left: 12px">{{ fontSize }}px</span>
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="saveThemeSettings" :loading="saving">保存设置</el-button>
+            </el-form-item>
+          </el-form>
+        </div>
+      </el-tab-pane>
+    </el-tabs>
 
     <!-- 修改密码对话框 -->
-    <el-dialog v-model="showPassword" title="修改密码" width="400px">
-      <el-form :model="passwordForm" label-position="top">
-        <el-form-item label="旧密码">
-          <el-input v-model="passwordForm.old" type="password" show-password />
+    <el-dialog 
+      v-model="showPasswordDialog" 
+      title="修改密码" 
+      width="400px"
+      :close-on-click-modal="false"
+    >
+      <el-form ref="passwordFormRef" :model="passwordForm" :rules="passwordRules" label-position="top">
+        <el-form-item label="旧密码" prop="oldPassword">
+          <el-input 
+            v-model="passwordForm.oldPassword" 
+            type="password" 
+            show-password 
+            placeholder="请输入旧密码"
+          />
         </el-form-item>
-        <el-form-item label="新密码">
-          <el-input v-model="passwordForm.new1" type="password" show-password />
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input 
+            v-model="passwordForm.newPassword" 
+            type="password" 
+            show-password 
+            placeholder="请输入新密码"
+          />
         </el-form-item>
-        <el-form-item label="确认新密码">
-          <el-input v-model="passwordForm.new2" type="password" show-password />
+        <el-form-item label="确认新密码" prop="confirmPassword">
+          <el-input 
+            v-model="passwordForm.confirmPassword" 
+            type="password" 
+            show-password 
+            placeholder="再次输入新密码"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showPassword = false">取消</el-button>
-        <el-button type="primary" @click="changePassword">确认修改</el-button>
+        <el-button @click="showPasswordDialog = false">取消</el-button>
+        <el-button type="primary" @click="changePassword" :loading="saving">确认修改</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useAuthStore } from '@/stores/auth'
+import { authAPI, notificationAPI } from '@/api'
+
+const auth = useAuthStore()
+const saving = ref(false)
+const twoFactorLoading = ref(false)
+const showPasswordDialog = ref(false)
 
 const profile = ref({
-  username: 'zhangsan', email: 'zhangsan@example.com', phone: '13800138000', avatar: ''
+  username: '',
+  email: '',
+  phone: '',
+  avatar: ''
 })
-const twoFA = ref(false)
-const notifPrefs = ref(['task_assigned', 'status_change', 'comment'])
-const showPassword = ref(false)
-const passwordForm = ref({ old: '', new1: '', new2: '' })
 
-function saveProfile() { ElMessage.success('保存成功') }
-function changePassword() { ElMessage.success('密码修改成功'); showPassword.value = false }
+const twoFactorEnabled = ref(false)
+const notificationPrefs = ref(['task_assigned', 'status_change', 'comment_mention'])
+const language = ref('zh-CN')
+const theme = ref('light')
+const fontSize = ref(14)
+
+const passwordForm = reactive({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+
+const passwordRules = {
+  oldPassword: [
+    { required: true, message: '请输入旧密码', trigger: 'blur' },
+    { min: 6, message: '密码至少6位', trigger: 'blur' }
+  ],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, message: '密码至少6位', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请输入确认密码', trigger: 'blur' },
+    { min: 6, message: '密码至少6位', trigger: 'blur' }
+  ]
+}
+
+// 初始化数据
+onMounted(async () => {
+  try {
+    // 获取用户信息
+    const userProfile = await authAPI.profile()
+    Object.assign(profile.value, userProfile)
+    
+    // 获取通知偏好
+    const prefs = await notificationAPI.getNotificationPreferences()
+    notificationPrefs.value = prefs.preferences || []
+    
+    // 获取主题设置
+    const saved = localStorage.getItem('theme_settings')
+    if (saved) {
+      const settings = JSON.parse(saved)
+      language.value = settings.language || 'zh-CN'
+      theme.value = settings.theme || 'light'
+      fontSize.value = settings.fontSize || 14
+    }
+  } catch (error) {
+    ElMessage.error('获取设置信息失败')
+  }
+})
+
+// 保存个人资料
+async function saveProfile() {
+  saving.value = true
+  try {
+    await authAPI.updateProfile({
+      email: profile.value.email,
+      phone: profile.value.phone,
+      avatar: profile.value.avatar
+    })
+    ElMessage.success('个人资料保存成功')
+  } catch (error) {
+    ElMessage.error(error.response?.data?.message || '保存失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+// 处理头像上传
+function handleAvatarChange(file) {
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    profile.value.avatar = e.target.result
+  }
+  reader.readAsDataURL(file.raw)
+}
+
+// 双因素认证切换
+async function handleTwoFactorChange(enabled) {
+  twoFactorLoading.value = true
+  try {
+    if (enabled) {
+      await authAPI.enableTwoFactor()
+      ElMessage.success('双因素认证已启用')
+    } else {
+      await authAPI.disableTwoFactor()
+      ElMessage.success('双因素认证已禁用')
+    }
+  } catch (error) {
+    twoFactorEnabled.value = !enabled
+    ElMessage.error(error.response?.data?.message || '操作失败')
+  } finally {
+    twoFactorLoading.value = false
+  }
+}
+
+// 保存通知偏好
+async function saveNotificationPrefs() {
+  saving.value = true
+  try {
+    await notificationAPI.updateNotificationPreferences({
+      preferences: notificationPrefs.value
+    })
+    ElMessage.success('通知偏好已保存')
+  } catch (error) {
+    ElMessage.error(error.response?.data?.message || '保存失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+// 保存主题设置
+async function saveThemeSettings() {
+  saving.value = true
+  try {
+    const settings = {
+      language: language.value,
+      theme: theme.value,
+      fontSize: fontSize.value
+    }
+    localStorage.setItem('theme_settings', JSON.stringify(settings))
+    ElMessage.success('主题设置已保存')
+    
+    // 这里可以添加应用主题和语言的逻辑
+    if (theme.value !== 'auto') {
+      document.documentElement.setAttribute('data-theme', theme.value)
+    }
+  } catch (error) {
+    ElMessage.error('保存失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+// 修改密码
+async function changePassword() {
+  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+    ElMessage.error('两次输入的密码不一致')
+    return
+  }
+  
+  saving.value = true
+  try {
+    await authAPI.changePassword({
+      old_password: passwordForm.oldPassword,
+      new_password: passwordForm.newPassword
+    })
+    ElMessage.success('密码修改成功')
+    showPasswordDialog.value = false
+    
+    // 重置表单
+    Object.assign(passwordForm, {
+      oldPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    })
+  } catch (error) {
+    ElMessage.error(error.response?.data?.message || '密码修改失败')
+  } finally {
+    saving.value = false
+  }
+}
 </script>
 
 <style scoped lang="scss">
-.notif-item { padding: 4px 0; }
+.settings-page {
+  padding: 20px;
+  background: #f2f3f5;
+  min-height: 100vh;
+}
+
+.tab-content {
+  padding: 20px 0;
+}
+
+.notif-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  
+  .notif-desc {
+    margin-left: 12px;
+    font-size: 12px;
+    color: #909399;
+  }
+}
+
+:deep(.el-form-item__content) {
+  line-height: 1;
+}
 </style>

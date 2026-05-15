@@ -1,9 +1,26 @@
+<<<<<<< HEAD
+# ===== Python =====
+=======
 # Python
+>>>>>>> 14d5edbf12775b8fd48eaad7f972eccce721bd52
 __pycache__/
 *.py[cod]
 *.pyo
 *.egg-info/
 dist/
+<<<<<<< HEAD
+build/
+*.egg
+.eggs/
+*.log
+*.pot
+*.mo
+*.po
+*.db
+*.sqlite3
+.env
+.env.*
+=======
 *.egg
 
 # Django
@@ -12,19 +29,52 @@ media/
 staticfiles/
 
 # Virtualenv
+>>>>>>> 14d5edbf12775b8fd48eaad7f972eccce721bd52
 venv/
 .venv/
 env/
 
+<<<<<<< HEAD
+# ===== Node.js =====
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+package-lock.json
+yarn.lock
+
+# ===== IDE / Editor =====
+=======
 # Node
 node_modules/
 dist/
 
 # IDE
+>>>>>>> 14d5edbf12775b8fd48eaad7f972eccce721bd52
 .vscode/
 .idea/
 *.swp
 *.swo
+<<<<<<< HEAD
+*~
+.DS_Store
+Thumbs.db
+
+# ===== Docker =====
+*.tar
+
+# ===== OS =====
+Desktop.ini
+
+# ===== Other =====
+*.tmp
+*.temp
+.cache/
+coverage/
+htmlcov/
+.coverage
+=======
 
 # OS
 .DS_Store
@@ -36,3 +86,4 @@ Thumbs.db
 
 # Docker
 mysql_data/
+>>>>>>> 14d5edbf12775b8fd48eaad7f972eccce721bd52

@@ -13,6 +13,6 @@ const props = defineProps({
   effect: { type: String, default: 'light' }
 })
 
-const typeMap = { low: 'info', medium: '', high: 'warning', urgent: 'danger' }
+const typeMap = { low: 'info', medium: undefined, high: 'warning', urgent: 'danger' }
 const labelMap = { low: '低', medium: '中', high: '高', urgent: '紧急' }
 </script>

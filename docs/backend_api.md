@@ -27,7 +27,7 @@ info:
     甘特图、敏捷看板、冲刺管理、工时记录、通知、报表等功能。
   version: "1.0.0"
   contact:
-    name: NoStackHub 团队
+    name: NoStockHub 团队
 
 servers:
   - url: http://127.0.0.1:8000/api

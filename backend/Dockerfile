@@ -2,7 +2,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# 使用阿里云镜像源解决网络问题
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources && \
+    apt-get update && apt-get install -y --no-install-recommends \
     build-essential pkg-config default-libmysqlclient-dev \
     && rm -rf /var/lib/apt/lists/*
 
