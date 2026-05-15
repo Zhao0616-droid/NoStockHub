@@ -9,11 +9,6 @@ from .serializers import (
 )
 from core.permissions import IsProjectMember
 from apps.notifications.utils import create_notification
-# try:
-#     from apps.notifications.utils import create_notification
-# except ImportError:
-#     def create_notification(**kwargs):
-#         pass
 
 class TaskViewSet(viewsets.ModelViewSet):
     serializer_class = TaskDetailSerializer

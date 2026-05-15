@@ -18,7 +18,7 @@ class Role(TimestampedModel):
         return self.name
 
 
-class User(AbstractUser, TimestampedModel):
+class User(AbstractUser):
     """用户模型"""
     email = models.EmailField(unique=True, verbose_name='邮箱')
     phone = models.CharField(max_length=20, blank=True, verbose_name='手机号')
@@ -37,7 +37,8 @@ class User(AbstractUser, TimestampedModel):
         verbose_name='角色类型'
     )
     two_factor_enabled = models.BooleanField(default=False, verbose_name='双因素认证')
-    last_login = models.DateTimeField(null=True, blank=True, verbose_name='最后登录')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
     class Meta:
         db_table = 'accounts_user'
