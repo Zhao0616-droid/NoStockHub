@@ -162,9 +162,13 @@ async function handleRegister() {
 }
 
 function devLogin() {
-  form.username = 'test'
-  form.password = '123456'
-  handleLogin()
+  localStorage.setItem('access_token', 'dev-mock-token')
+  localStorage.setItem('refresh_token', 'dev-mock-refresh')
+  auth.accessToken = 'dev-mock-token'
+  auth.refreshToken = 'dev-mock-refresh'
+  auth.user = { id: 'dev-1', username: '开发者', email: 'dev@test.com', role: 'admin' }
+  ElMessage.success('开发模式登录成功')
+  router.push('/dashboard')
 }
 </script>
 
