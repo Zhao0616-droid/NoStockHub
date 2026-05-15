@@ -1,0 +1,18 @@
+from rest_framework import serializers
+from .models import WorkLog
+from apps.accounts.serializers import UserSerializer
+
+class WorkLogSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    task_title = serializers.CharField(source='task.title', read_only=True)
+
+    class Meta:
+        model = WorkLog
+        fields = ['id', 'task', 'task_title', 'user', 'hours', 'date', 'description', 'created_at', 'updated_at']
+
+    def validate_hours(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("工时必须大于0")
+        if value > 24:
+            raise serializers.ValidationError("单日工时不能超过24小时")
+        return value

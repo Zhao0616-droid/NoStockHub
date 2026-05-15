@@ -26,8 +26,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
 
     permission_classes = [IsAuthenticated]
     serializer_class = NotificationSerializer
-    # 不显式绑定 pagination_class，避免 drf-spectacular 再包一层分页 schema，
-    # 把整块列表响应误当成「每一页条目」的形状（Swagger 中出现 results 嵌套 results）。
+    # 不显式绑定 pagination_class，避免 drf-spectacular 再包一层分页 schema
     pagination_class = None
     filter_backends = []
 

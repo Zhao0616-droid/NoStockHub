@@ -8,7 +8,6 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   redis:
     image: redis:7-alpine
@@ -17,12 +16,16 @@ services:
 
   backend:
     build: ./backend
-    command: python manage.py runserver 0.0.0.0:8000
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py seed_dev &&
+             python manage.py runserver 0.0.0.0:8000"
     volumes:
       - ./backend:/app
     ports:
       - "8000:8000"
     environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.base
       - DB_HOST=db
       - DB_PASSWORD=${DB_PASSWORD:-root}
       - REDIS_URL=redis://redis:6379/0
@@ -36,6 +39,7 @@ services:
     volumes:
       - ./backend:/app
     environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.base
       - DB_HOST=db
       - DB_PASSWORD=${DB_PASSWORD:-root}
       - REDIS_URL=redis://redis:6379/0
@@ -50,6 +54,8 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    environment:
+      - VITE_API_TARGET=http://backend:8000
     depends_on:
       - backend
 

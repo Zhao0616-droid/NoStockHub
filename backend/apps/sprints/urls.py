@@ -1,5 +1,8 @@
-from django.urls import path
+from rest_framework.routers import DefaultRouter
 
-app_name = 'sprints'
+from .views import SprintViewSet
 
-urlpatterns = []
+router = DefaultRouter()
+router.register('', SprintViewSet, basename='sprint')
+
+urlpatterns = router.urls

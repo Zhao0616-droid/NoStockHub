@@ -37,7 +37,7 @@ const chartOption = computed(() => ({
     data: ['理想剩余', '实际剩余'],
     bottom: 0
   },
-  grid: { left: 40, right: 20, top: 20, bottom: 40 },
+  grid: { left: 75, right: 20, top: 20, bottom: 40 },
   xAxis: {
     type: 'category',
     data: props.dates,
@@ -47,6 +47,9 @@ const chartOption = computed(() => ({
   yAxis: {
     type: 'value',
     name: '剩余任务',
+    nameLocation: 'middle',
+    nameGap: 45,
+    nameTextStyle: { fontSize: 12 },
     axisLabel: { fontSize: 11 }
   },
   series: [

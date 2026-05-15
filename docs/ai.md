@@ -263,3 +263,197 @@
 - accounts 模块后续迭代应增加：密码重置、邮箱验证、角色权限 CRUD 接口、登录失败锁定与双因素认证
 - 项目应补充 .env.example 文件，明确 DB_PASSWORD 等环境变量的默认值，降低新成员环境搭建成本
 - 建议团队统一使用 docker-compose down -v 清理卷后重建标准流程，减少手动操作数据库带来的环境不一致
+
+---
+
+## 12. 交互场景十：任务看板功能实现
+
+### 日期
+2026-05-15
+
+### 原始提示词
+"实现任务看板功能，产出stores/board.js和/projects/:id/board文件"
+
+### AI 输出摘要
+- 创建 `stores/board.js` Pinia Store，包含看板 CRUD、列管理、任务拖拽移动（乐观更新 + 失败回滚）
+- 重写 `pages/task/Board.vue` 看板页面，对照 UI 设计文档 4.6 完整实现
+- 功能覆盖：看板选择器切换 + 创建看板对话框、列的增删改（名称 + WIP 限制）、HTML5 Drag API 拖拽任务跨列移动、拖拽时源列/目标列高亮、WIP 超限红色告警、任务卡片复用 TaskCard 组件、列底部快速创建任务、任务详情右侧抽屉（480px）、空状态与加载态处理
+- 后端 API 不可用时自动降级使用内置 Mock 数据（4 列 × 多任务）
+
+### 可能存在的问题
+- 拖拽使用 HTML5 原生 Drag API，在移动端体验不佳，未集成 vuedraggable/SortableJS
+- Mock 模式下创建的任务 ID 使用时间戳生成，与后端 UUID 格式不一致
+- 快速创建任务时未自动绑定到当前列的目标状态
+
+### 迭代优化
+- 后续可迁移到 vuedraggable 库以支持移动端拖拽和动画效果
+- 看板列表增加列内排序（order 字段），目前仅支持跨列移动
+- 增加看板模板功能，新建看板时可选择预设列布局
+
+---
+
+## 13. 交互场景十一：任务列表功能重构
+
+### 日期
+2026-05-15
+
+### 原始提示词
+"实现'任务列表'功能，输出stores/task.js，task/文件"
+
+### AI 输出摘要
+- 重构 `stores/task.js`：新增 `filteredTasks` 计算属性实现前端联动筛选（搜索 + 状态多选 + 优先级 + 类型 + 负责人 + 项目），分页（page/pageSize/total），排序（列头切换升降序），Mock 回退机制（8 条完整 mock 数据含多种状态/优先级/类型）
+- 重写 `pages/task/List.vue`：完整筛选工具栏（搜索框防抖 300ms、状态多选 collapsed tags、优先级/类型/负责人下拉）、el-table 自定义排序、截止日期过期红色高亮、类型标签颜色区分、el-pagination 完整翻页、空状态区分"无数据"和"筛选无结果"、清除筛选按钮、响应路由切换自动重新加载
+
+### 可能存在的问题
+- 前端分页在数据量大时需改为后端分页，当前 computed 基于全量 tasks 切片
+- 筛选状态未同步到 URL query 参数，页面刷新后筛选条件丢失
+- 负责人筛选使用硬编码的 mock 用户（u1/u2/u3），未对接真实用户 API
+
+### 迭代优化
+- 对接真实 API 后，将分页和筛选参数传递给后端（已预留 page/page_size/ordering 参数）
+- 筛选条件同步到 URL query（使用 useRoute query + watch 双向绑定）
+- 增加批量操作（批量删除、批量修改状态、批量分配负责人）
+
+---
+
+## 14. 交互场景十二：甘特图功能实现
+
+### 日期
+2026-05-15
+
+### 原始提示词
+"实现'甘特图'功能，输出gantt/文件"
+
+### AI 输出摘要
+- 使用 ECharts 的 `custom` series 重写 `pages/gantt/Index.vue`，替换原有的 HTML table 占位实现
+- 核心功能：日/周/月三档视图切换 + 左右翻页导航 + 日期范围标签、任务条渲染（半透明背景 + 进度填充 + 圆角边框）、里程碑菱形标记（scatter series）、依赖连线虚线箭头（lines series）、今天红色标记线（markLine）、hover 浮窗显示任务详情（tooltip）、底部 dataZoom 滑块缩放、负责人筛选 + 显示/隐藏里程碑/依赖开关
+- 内置 7 条 mock 任务（含 epic）、3 个里程碑、6 条依赖关系
+- 响应式监听 viewMode 和 dateOffset 变化自动重绘，窗口 resize 自适应
+
+### 可能存在的问题
+- 里程碑位置映射到最近的任务行，非独立行显示，可能与任务条重叠
+- 依赖连线使用简单的直线连接，复杂依赖关系下可能出现线条交叉混乱
+- 甘特图任务条不可拖拽调整日期，仅支持查看
+- 筛选条件未与 taskStore 联动，使用的是页面内独立 mock 数据
+
+### 迭代优化
+- 里程碑改为独立行显示，避免与任务条视觉重叠
+- 依赖连线增加贝塞尔曲线路径（curveness），减少交叉
+- 实现任务条拖拽调整起止日期（使用 ECharts 的 brush 或 custom event）
+- 对接真实 API 的甘特图数据接口（projectAPI.gantt），与 taskStore 数据统一
+
+---
+
+## 15. 交互场景十三：图表组件库建设
+
+### 日期
+2026-05-15
+
+### 原始提示词
+"完成components/charts/图表组件集成"
+
+### AI 输出摘要
+- 创建 6 个可复用图表组件的完整库：
+  - `BaseChart.vue`：ECharts 通用包装器，自动 init/dispose/resize，option 深度 watch 自动更新，暴露 chartInstance 和 setOption/resize 方法
+  - `ProgressRing.vue`：环形进度图（pie series），中心显示百分比 + 标签 + 副标签，支持自定义颜色/尺寸/线宽
+  - `BurndownChart.vue`：冲刺燃尽图，理想虚线 vs 实际实线 + 面积渐变填充
+  - `StatCard.vue`：统计卡片，数字动画入场（easeOutCubic），支持图标/颜色/趋势箭头（上升/下降/持平）
+  - `TaskDistribution.vue`：任务分布图，支持饼图/柱状图切换，按状态/优先级/负责人/类型分组
+  - `TrendChart.vue`：多系列趋势折线图，可选平滑曲线和面积填充
+- 创建 `index.js` 统一导出，创建 `demo/Charts.vue` 演示页面展示所有组件效果
+- 添加路由 `/demo/charts` 用于实时预览
+
+### 可能存在的问题
+- TrendChart 面积渐变使用简单的字符串替换实现 rgba 转换，对 hex 格式颜色可能失效
+- StatCard 动画使用 requestAnimationFrame，在组件快速切换时可能有残留动画
+- 图表组件未提供 empty/error 状态的统一处理，需调用方自行包裹
+
+### 迭代优化
+- 抽取颜色处理工具函数，统一处理 hex/rgb/rgba 格式转换
+- StatCard 动画增加 cancel 机制（onUnmounted 取消未完成的 RAF）
+- BaseChart 增加 error 插槽和 empty 插槽，统一图表容器的边界状态
+
+---
+
+## 16. 交互场景十四：项目规范化与工程问题修复
+
+### 日期
+2026-05-15
+
+### 原始提示词
+"我在VScode中的github源代码管理的更改项怎么又一万多项，我该怎么解决"
+
+### AI 输出摘要
+- 诊断问题根因：项目根目录缺少 `.gitignore` 文件，导致 `frontend/node_modules/`（npm 安装的 2000+ 包上万个文件）被 Git 追踪
+- 创建完整 `.gitignore` 文件，覆盖 Python（`__pycache__/`、`venv/`、`.env`）、Node.js（`node_modules/`、`package-lock.json`）、IDE（`.vscode/`、`.idea/`）、OS（`Thumbs.db`、`Desktop.ini`）等 6 大类
+- 变更量从 10000+ 降至 10 个文件，源代码管理面板恢复正常
+
+### 可能存在的问题
+- `.gitignore` 创建后，已跟踪的 node_modules 文件可能仍显示（需 `git rm --cached -r frontend/node_modules` 清理缓存）
+- 未包含 `*.log` 等常见忽略规则
+
+### 迭代优化
+- 补充 `*.log`、`coverage/`、`dist/` 等通用忽略规则
+- 在项目初始化阶段就应创建 .gitignore，避免后续补救
+
+---
+
+## 17. 交互场景十五：项目报表页实现
+
+### 日期
+2026-05-15
+
+### 原始提示词
+"实现报表页中的各种报表功能，以生成图表组件"
+
+### AI 输出摘要
+- 重写 `pages/report/Index.vue` 为完整报表仪表盘，使用已有的 6 个图表组件
+- 4 个 Tab 页签：概览（StatCard × 4 + ProgressRing + TaskDistribution 饼图 × 2）、任务统计（TrendChart 面积图 × 2 + TaskDistribution 柱状图 × 2）、工时分析（StatCard × 4 + TrendChart 双线对比 + 成员柱状图）、燃尽图（BurndownChart + 冲刺选择器）
+- 顶部日期范围选择器（含本周/本月/上个月快捷选项）+ PDF/Excel/CSV 导出下拉按钮
+- 底部报表历史表格（名称/类型/格式/时间/操作），支持下载和删除
+- 全部使用 mock 数据，覆盖 4 个维度的完整分析视角
+
+### 可能存在的问题
+- 页面首次实现时使用 `height: 100%` + flex 列布局，因父容器 `el-main` 仅设 `min-height` 无固定高度，导致内容被截断只显示一半
+- `el-tabs__content` 默认 `overflow: hidden`，内部图表容器宽度计算异常
+- 图表在隐藏 Tab 中初始化时容器无宽度，ECharts 渲染为 100px 宽度
+- TrendChart 的 rgba 颜色转换对 hex 格式失效，面积渐变可能不生效
+
+### 迭代优化
+- 移除 `height: 100%` 等强制布局，改为自然流式布局 + `min-height` 兜底
+- `.report-tabs` 增加 `:deep(.el-tabs__content) { overflow: visible }`
+- Tab 切换时触发 `@tab-change` → `nextTick` → 延迟派发 `window.resize` 事件
+- BaseChart 增加 `ResizeObserver` 和 `clientWidth === 0` 重试机制（见场景十六）
+
+---
+
+## 18. 交互场景十六：图表组件运行时问题排查与 ECharts 初始化修复
+
+### 日期
+2026-05-15
+
+### 原始提示词
+"图表内容挤在一起了" / "只能显示一半面板" / "还是显示不完全"
+
+### AI 输出摘要
+- **根因诊断**：ECharts 在隐藏容器（`el-tab-pane` 未激活、`el-dialog` 动画未完成）中初始化时，`clientWidth === 0` 或很小，渲染为 100px 宽度，后续未自动 resize
+- **BaseChart.vue 核心修复**：
+  - 增加 `clientWidth === 0` 检测，宽度为零时 `setTimeout(initChart, 100)` 重试
+  - 增加 `ResizeObserver` 自动监听容器尺寸变化（Tab 切换、侧边栏折叠等），触发 `chartInstance.resize()`
+  - `onUnmounted` 时清理 `resizeObserver.disconnect()`
+- **report/Index.vue 辅助修复**：`@tab-change` 延迟派发 `window.resize`；`.chart-card` 加 `min-width: 0`；`.el-tabs__content` 改为 `overflow: visible`
+- **冲刺燃尽图集成**：将 `sprint/Index.vue` 的燃尽图从 `el-dialog` 弹窗改为卡片内嵌展开（:key 强制重初始化 + toggleBurndown 中延迟 resize），避免对话框尺寸限制
+- **BurndownChart 纵轴标题截断修复**（3 轮迭代）：
+  - 第 1 轮：`grid.left: 40 → 55`，添加 `nameTextStyle.padding`
+  - 第 2 轮：`55 → 60`，移除负值 padding
+  - 第 3 轮：`60 → 75`，增加 `nameLocation: 'middle'` + `nameGap: 45`，彻底解决中文字符宽度溢出
+
+### 可能存在的问题
+- `ResizeObserver` 在极旧浏览器中不支持（如 IE11），但现代浏览器已全面覆盖
+- `setTimeout(initChart, 100)` 无限递归风险——若容器永久零宽度将陷入死循环，当前未设置最大重试次数
+- 弹窗方案改为内嵌展开后，冲刺卡片过长时可能影响页面整体可读性
+
+### 迭代优化
+- ResizeObserver 增加最大重试次数（如 50 次）后放弃初始化，显示错误占位
+- 为对话框中的图表增加通用的 `@opened` 事件处理模式，统一解决弹窗内图表初始化时机问题
+- 纵轴标题截断问题可抽取为工具函数：根据文本长度、字体大小自动计算 `grid.left`

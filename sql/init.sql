@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS projects_milestone (
     status ENUM('pending', 'completed') DEFAULT 'pending',
     project_id CHAR(36) NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (project_id) REFERENCES projects_project(id) ON DELETE CASCADE,
     INDEX idx_milestone_project (project_id)
 ) ENGINE=InnoDB;
@@ -115,6 +116,7 @@ CREATE TABLE IF NOT EXISTS tasks_task (
     estimated_hours DECIMAL(8,2) DEFAULT 0.00,
     actual_hours DECIMAL(8,2) DEFAULT 0.00,
     progress INT DEFAULT 0 COMMENT '进度百分比 0-100',
+    `order` INT DEFAULT 0 COMMENT '排序序号',
     project_id CHAR(36) NOT NULL,
     sprint_id CHAR(36) DEFAULT NULL,
     parent_task_id CHAR(36) DEFAULT NULL,
@@ -140,6 +142,7 @@ CREATE TABLE IF NOT EXISTS tasks_taskdependency (
     successor_id CHAR(36) NOT NULL COMMENT '后继任务',
     relation_type ENUM('blocks', 'precedes', 'relates_to') DEFAULT 'precedes',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uk_dependency (predecessor_id, successor_id),
     FOREIGN KEY (predecessor_id) REFERENCES tasks_task(id) ON DELETE CASCADE,
     FOREIGN KEY (successor_id) REFERENCES tasks_task(id) ON DELETE CASCADE,
@@ -158,6 +161,7 @@ CREATE TABLE IF NOT EXISTS kanban_kanbanboard (
     type ENUM('team', 'version', 'sub_project') DEFAULT 'team',
     project_id CHAR(36) NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (project_id) REFERENCES projects_project(id) ON DELETE CASCADE,
     INDEX idx_board_project (project_id)
 ) ENGINE=InnoDB;
@@ -170,6 +174,7 @@ CREATE TABLE IF NOT EXISTS kanban_kanbancolumn (
     wip_limit INT DEFAULT 0 COMMENT '在制品限制, 0=无限制',
     board_id CHAR(36) NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (board_id) REFERENCES kanban_kanbanboard(id) ON DELETE CASCADE,
     INDEX idx_column_board (board_id),
     INDEX idx_column_order (board_id, `order`)
@@ -273,6 +278,7 @@ CREATE TABLE IF NOT EXISTS files_attachment (
     project_id CHAR(36) DEFAULT NULL,
     uploader_id CHAR(36) NOT NULL,
     uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (task_id) REFERENCES tasks_task(id) ON DELETE CASCADE,
     FOREIGN KEY (project_id) REFERENCES projects_project(id) ON DELETE CASCADE,
     INDEX idx_attach_task (task_id),

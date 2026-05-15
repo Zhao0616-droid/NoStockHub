@@ -5,7 +5,7 @@ from core.models import TimestampedModel
 
 
 class Notification(TimestampedModel):
-    """站内通知，由业务侧写入；当前 API 仅提供列表与已读状态。"""
+    """站内通知，由业务侧写入；当前 API 提供列表与已读状态。"""
 
     class Type(models.TextChoices):
         TASK_ASSIGNED = 'task_assigned', '任务分配'

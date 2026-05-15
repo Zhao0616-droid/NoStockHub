@@ -101,8 +101,10 @@ async function handleCreate() {
     await store.createProject(form.value)
     ElMessage.success('项目创建成功')
     showCreate.value = false
-  } catch {
-    ElMessage.error('创建失败')
+  } catch (error) {
+    const data = error.response?.data || {}
+    const msg = data.detail || data.name?.[0] || data.non_field_errors?.[0] || '创建失败'
+    ElMessage.error(typeof msg === 'string' ? msg : JSON.stringify(msg))
   } finally {
     creating.value = false
   }

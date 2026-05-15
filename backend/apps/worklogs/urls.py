@@ -1,5 +1,11 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import WorkLogViewSet
 
-app_name = 'worklogs'
+router = DefaultRouter()
+router.register(r'', WorkLogViewSet, basename='worklog')
 
-urlpatterns = []
+urlpatterns = [
+    path('', include(router.urls)),
+    path('summary/', WorkLogViewSet.as_view({'get': 'summary'}), name='worklog-summary'),
+]
