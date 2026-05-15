@@ -2,7 +2,7 @@
   <div class="login-page">
     <div class="login-card">
       <h1 class="login-title">软件项目管理平台</h1>
-      <p class="login-subtitle">NoStackHub</p>
+      <p class="login-subtitle">NoStockHub</p>
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @submit.prevent="handleLogin">
         <el-form-item label="用户名" prop="username">
           <el-input v-model="form.username" placeholder="请输入用户名" prefix-icon="User" />
