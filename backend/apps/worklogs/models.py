@@ -1,65 +1,43 @@
-from django.conf import settings
+import uuid
 from django.db import models
-
-from core.models import TimestampedModel, BaseModel
-
+from django.conf import settings
+from core.models import TimestampedModel
 
 class WorkLog(TimestampedModel):
-    task = models.ForeignKey(
-        'tasks.Task',
-        on_delete=models.CASCADE,
-        related_name='worklogs',
-    )
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='worklogs',
-    )
-    hours = models.DecimalField(max_digits=6, decimal_places=2)
-    date = models.DateField()
-    description = models.TextField(blank=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    task = models.ForeignKey('tasks.Task', on_delete=models.CASCADE, related_name='worklogs', verbose_name='关联任务')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='worklogs', verbose_name='记录人')
+    hours = models.DecimalField(max_digits=6, decimal_places=2, verbose_name='工时(小时)')
+    date = models.DateField(verbose_name='工作日期')
+    description = models.TextField(blank=True, null=True, verbose_name='工作内容说明')
 
     class Meta:
         db_table = 'worklogs_worklog'
-        ordering = ['-date', '-created_at']
         indexes = [
-            models.Index(fields=['task'], name='idx_worklog_task'),
-            models.Index(fields=['user'], name='idx_worklog_user'),
-            models.Index(fields=['date'], name='idx_worklog_date'),
+            models.Index(fields=['task']),
+            models.Index(fields=['user']),
+            models.Index(fields=['date']),
         ]
+        verbose_name = '工时记录'
+        verbose_name_plural = '工时记录'
 
-    def __str__(self):
-        return f'{self.user_id}: {self.hours}h on {self.date}'
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # 更新任务的实际工时
+        total = self.task.worklogs.aggregate(total=models.Sum('hours'))['total'] or 0
+        self.task.actual_hours = total
+        self.task.save(update_fields=['actual_hours'])
 
-
-class HourlyRate(BaseModel):
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='hourly_rates',
-    )
-    project = models.ForeignKey(
-        'projects.Project',
-        on_delete=models.CASCADE,
-        related_name='hourly_rates',
-    )
-    rate = models.DecimalField(max_digits=10, decimal_places=2)
-    effective_from = models.DateField()
-    created_at = models.DateTimeField(auto_now_add=True)
+class HourlyRate(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='hourly_rates', verbose_name='用户')
+    project = models.ForeignKey('projects.Project', on_delete=models.CASCADE, related_name='hourly_rates', verbose_name='项目')
+    rate = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='每小时费率')
+    effective_from = models.DateField(verbose_name='生效日期')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
 
     class Meta:
         db_table = 'worklogs_hourlyrate'
-        ordering = ['-effective_from']
-        constraints = [
-            models.UniqueConstraint(
-                fields=['user', 'project', 'effective_from'],
-                name='uk_user_project_rate',
-            ),
-        ]
-        indexes = [
-            models.Index(fields=['user'], name='idx_rate_user'),
-            models.Index(fields=['project'], name='idx_rate_project'),
-        ]
-
-    def __str__(self):
-        return f'{self.user_id}: {self.rate}/h from {self.effective_from}'
+        unique_together = ('user', 'project', 'effective_from')
+        verbose_name = '工时费率'
+        verbose_name_plural = '工时费率'

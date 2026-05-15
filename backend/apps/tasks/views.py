@@ -1,154 +1,138 @@
-from django.db import models as db_models
-from rest_framework import status, viewsets
+from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-
-from core.permissions import IsProjectMember, IsProjectManager
-
-from .models import Comment, Task, TaskDependency
+from django.shortcuts import get_object_or_404
+from .models import Task, TaskDependency, Comment, Mention
 from .serializers import (
-    CommentCreateSerializer,
-    CommentSerializer,
-    TaskCreateSerializer,
-    TaskDependencyCreateSerializer,
-    TaskDependencySerializer,
-    TaskListSerializer,
-    TaskSerializer,
-    TaskStatusTransitionSerializer,
-    TaskUpdateSerializer,
+    TaskDetailSerializer, TaskListSerializer, TaskCreateSerializer, 
+    TaskStatusUpdateSerializer, TaskDependencySerializer, CommentSerializer
 )
-
+from core.permissions import IsProjectMember
+from apps.notifications.utils import create_notification
 
 class TaskViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
-    search_fields = ['title', 'description']
-    ordering_fields = ['created_at', 'updated_at', 'start_date', 'due_date', 'priority', 'status', 'order']
-    ordering = ['order', '-created_at']
-    filterset_fields = ['status', 'priority', 'type', 'project', 'sprint', 'assignee']
+    serializer_class = TaskDetailSerializer
+    permission_classes = [permissions.IsAuthenticated, IsProjectMember]
 
     def get_queryset(self):
-        queryset = Task.objects.select_related(
-            'project', 'sprint', 'assignee', 'reporter', 'parent_task'
-        ).prefetch_related('subtasks', 'comments', 'comments__replies')
-
+        user = self.request.user
+        # 基本隔离：只能看到参与项目的任务
+        queryset = Task.objects.filter(project__members__user=user)
+        
+        # 筛选逻辑
         project_id = self.request.query_params.get('project_id')
+        status_filter = self.request.query_params.get('status')
+        assignee_id = self.request.query_params.get('assignee_id')
+        
         if project_id:
             queryset = queryset.filter(project_id=project_id)
-
-        sprint_id = self.request.query_params.get('sprint_id')
-        if sprint_id:
-            queryset = queryset.filter(sprint_id=sprint_id)
-
-        assignee_id = self.request.query_params.get('assignee_id')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
         if assignee_id:
             queryset = queryset.filter(assignee_id=assignee_id)
-
-        parent_task_isnull = self.request.query_params.get('parent_task_isnull')
-        if parent_task_isnull == 'true':
-            queryset = queryset.filter(parent_task__isnull=True)
-        elif parent_task_isnull == 'false':
-            queryset = queryset.filter(parent_task__isnull=False)
-
-        return queryset
+            
+        return queryset.select_related('assignee', 'reporter', 'project').prefetch_related('subtasks')
 
     def get_serializer_class(self):
-        if self.action == 'create':
-            return TaskCreateSerializer
-        if self.action in ['update', 'partial_update']:
-            return TaskUpdateSerializer
         if self.action == 'list':
             return TaskListSerializer
-        if self.action == 'transition':
-            return TaskStatusTransitionSerializer
-        return TaskSerializer
-
-    def get_permissions(self):
-        if self.action in ['update', 'partial_update', 'destroy', 'transition',
-                           'manage_dependencies', 'add_dependency', 'remove_dependency']:
-            return [IsAuthenticated(), IsProjectManager()]
-        if self.action in ['retrieve', 'list', 'manage_comments', 'add_comment',
-                           'subtasks_list', 'dependencies_list']:
-            return [IsAuthenticated(), IsProjectMember()]
-        return [IsAuthenticated()]
+        if self.action == 'create':
+            return TaskCreateSerializer
+        return TaskDetailSerializer
 
     def perform_create(self, serializer):
-        serializer.save(reporter=self.request.user)
+        task = serializer.save(reporter=self.request.user)
+        # 发送通知给负责人
+        if task.assignee:
+            create_notification(
+                user=task.assignee,
+                type='task_assigned',
+                title=f'新任务分配: {task.title}',
+                content=f'{self.request.user.username} 将任务分配给了您',
+                related_type='Task',
+                related_id=str(task.id)
+            )
 
-    @action(detail=True, methods=['post'])
-    def transition(self, request, pk=None):
+    @action(detail=True, methods=['patch'])
+    def update_status(self, request, pk=None):
         task = self.get_object()
-        serializer = TaskStatusTransitionSerializer(
-            data=request.data, context={'instance': task}
-        )
+        serializer = TaskStatusUpdateSerializer(task, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        task.status = serializer.validated_data['status']
-        if task.status == Task.Status.DONE:
-            task.progress = 100
-        task.save(update_fields=['status', 'progress'])
-        return Response(TaskSerializer(task).data)
+        
+        new_status = serializer.validated_data['status']
+        old_status = task.status
+        
+        # 简单的状态机校验 (可根据 db.md扩展)
+        valid_transitions = {
+            'todo': ['in_progress', 'blocked'],
+            'in_progress': ['review', 'blocked', 'todo'],
+            'review': ['done', 'in_progress'],
+            'blocked': ['todo', 'in_progress'],
+            'done': []
+        }
+        
+        if new_status not in valid_transitions.get(old_status, []):
+            return Response(
+                {"error": f"无法从 {old_status} 流转到 {new_status}"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-    # --- Comments ---
+        serializer.save()
+        
+        # 发送状态变更通知
+        if task.assignee and task.assignee != request.user:
+             create_notification(
+                user=task.assignee,
+                type='status_change',
+                title=f'任务状态变更: {task.title}',
+                content=f'任务状态从 {old_status} 变为 {new_status}',
+                related_type='Task',
+                related_id=str(task.id)
+            )
+            
+        return Response(TaskDetailSerializer(task).data)
 
-    @action(detail=True, methods=['get', 'post'], url_path='comments')
-    def manage_comments(self, request, pk=None):
+    @action(detail=True, methods=['get', 'post'])
+    def dependencies(self, request, pk=None):
         task = self.get_object()
-
         if request.method == 'GET':
-            comments = task.comments.filter(parent_comment__isnull=True)
-            return Response(CommentSerializer(comments, many=True).data)
+            # 获取当前任务作为前驱的依赖
+            deps = TaskDependency.objects.filter(predecessor=task)
+            serializer = TaskDependencySerializer(deps, many=True)
+            return Response(serializer.data)
+        
+        elif request.method == 'POST':
+            successor_id = request.data.get('successor_id')
+            if not successor_id:
+                return Response({"error": "successor_id required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # 循环依赖检测 (简化版：防止自依赖)
+            if successor_id == str(task.id):
+                 return Response({"error": "不能依赖自身"}, status=status.HTTP_400_BAD_REQUEST)
+                 
+            dep, created = TaskDependency.objects.get_or_create(
+                predecessor=task,
+                successor_id=successor_id,
+                defaults={'relation_type': request.data.get('relation_type', 'precedes')}
+            )
+            serializer = TaskDependencySerializer(dep)
+            status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+            return Response(serializer.data, status=status_code)
 
-        serializer = CommentCreateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        comment = serializer.save(author=request.user, task=task)
-        return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
-
-    @action(detail=True, methods=['delete'], url_path='comments/(?P<comment_id>[^/.]+)')
-    def delete_comment(self, request, pk=None, comment_id=None):
+    @action(detail=True, methods=['get', 'post'])
+    def comments(self, request, pk=None):
         task = self.get_object()
-        try:
-            comment = task.comments.get(id=comment_id)
-        except Comment.DoesNotExist:
-            return Response({'detail': 'Comment not found.'}, status=status.HTTP_404_NOT_FOUND)
-        if comment.author_id != request.user.id:
-            return Response({'detail': 'Only the author can delete this comment.'}, status=status.HTTP_403_FORBIDDEN)
-        comment.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    # --- Dependencies ---
-
-    @action(detail=True, methods=['get'], url_path='dependencies')
-    def dependencies_list(self, request, pk=None):
-        task = self.get_object()
-        deps = TaskDependency.objects.filter(
-            db_models.Q(predecessor=task) | db_models.Q(successor=task)
-        )
-        return Response(TaskDependencySerializer(deps, many=True).data)
-
-    @action(detail=True, methods=['post'], url_path='dependencies/add')
-    def add_dependency(self, request, pk=None):
-        task = self.get_object()
-        serializer = TaskDependencyCreateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        dep = serializer.save()
-        return Response(TaskDependencySerializer(dep).data, status=status.HTTP_201_CREATED)
-
-    @action(detail=True, methods=['delete'], url_path='dependencies/(?P<dep_id>[^/.]+)')
-    def remove_dependency(self, request, pk=None, dep_id=None):
-        task = self.get_object()
-        try:
-            dep = TaskDependency.objects.filter(
-                db_models.Q(predecessor=task) | db_models.Q(successor=task)
-            ).get(id=dep_id)
-        except TaskDependency.DoesNotExist:
-            return Response({'detail': 'Dependency not found.'}, status=status.HTTP_404_NOT_FOUND)
-        dep.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    # --- Subtasks ---
-
-    @action(detail=True, methods=['get'], url_path='subtasks')
-    def subtasks_list(self, request, pk=None):
-        task = self.get_object()
-        subtasks = task.subtasks.all()
-        return Response(TaskListSerializer(subtasks, many=True).data)
+        if request.method == 'GET':
+            comments = task.comments.filter(parent_comment__isnull=True) # 只获取根评论
+            serializer = CommentSerializer(comments, many=True)
+            return Response(serializer.data)
+        
+        elif request.method == 'POST':
+            serializer = CommentSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            comment = serializer.save(author=request.user, task=task)
+            
+            # TODO: 解析 content 中的 @username 并创建 Mention 记录
+            # parse_mentions(comment) 
+            
+            return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
