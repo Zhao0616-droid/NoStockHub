@@ -61,6 +61,7 @@ import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useTaskStore } from '@/stores/task'
 import { dashboardAPI } from '@/api'
+import { Folder } from '@element-plus/icons-vue'
 import PriorityTag from '@/components/common/PriorityTag.vue'
 
 const router = useRouter()

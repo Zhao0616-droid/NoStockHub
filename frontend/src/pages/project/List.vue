@@ -79,6 +79,7 @@
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useProjectStore } from '@/stores/project'
+import { Folder } from '@element-plus/icons-vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 
 const store = useProjectStore()
@@ -98,7 +99,10 @@ async function handleCreate() {
   if (!valid) return
   creating.value = true
   try {
-    await store.createProject(form.value)
+    const payload = { ...form.value }
+    if (!payload.start_date) payload.start_date = null
+    if (!payload.end_date) payload.end_date = null
+    await store.createProject(payload)
     ElMessage.success('项目创建成功')
     showCreate.value = false
   } catch (error) {
