@@ -57,6 +57,9 @@
         <el-form-item label="密码" prop="password">
           <el-input v-model="registerForm.password" type="password" show-password placeholder="至少6位" clearable />
         </el-form-item>
+        <el-form-item label="确认密码" prop="password2">
+          <el-input v-model="registerForm.password2" type="password" show-password placeholder="再次输入密码" clearable />
+        </el-form-item>
         <el-form-item label="手机号" prop="phone">
           <el-input v-model="registerForm.phone" placeholder="可选" clearable />
         </el-form-item>
@@ -98,7 +101,7 @@ const rules = {
   ]
 }
 
-const registerForm = reactive({ username: '', email: '', password: '', phone: '' })
+const registerForm = reactive({ username: '', email: '', password: '', password2: '', phone: '' })
 const registerRules = {
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
@@ -111,6 +114,10 @@ const registerRules = {
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
     { min: 6, message: '密码至少6位', trigger: 'blur' }
+  ],
+  password2: [
+    { required: true, message: '请再次输入密码', trigger: 'blur' },
+    { validator: (_rule, value, cb) => value !== registerForm.password ? cb(new Error('两次密码不一致')) : cb(), trigger: 'blur' }
   ]
 }
 
@@ -155,7 +162,9 @@ async function handleRegister() {
     registerForm.password = ''
     registerForm.phone = ''
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '注册失败')
+    const data = error.response?.data || {}
+    const msg = data.detail || data.password?.[0] || data.username?.[0] || data.email?.[0] || data.non_field_errors?.[0] || '注册失败'
+    ElMessage.error(typeof msg === 'string' ? msg : JSON.stringify(msg))
   } finally {
     regLoading.value = false
   }
