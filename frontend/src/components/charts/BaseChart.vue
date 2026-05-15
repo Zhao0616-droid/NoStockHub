@@ -17,6 +17,7 @@ const emit = defineEmits(['chart-ready', 'chart-click'])
 
 const chartRef = ref(null)
 let chartInstance = null
+let resizeObserver = null
 
 const chartStyle = computed(() => ({
   width: '100%',
@@ -28,6 +29,14 @@ function initChart() {
   if (chartInstance) {
     chartInstance.dispose()
   }
+
+  // ensure container has width before init
+  if (chartRef.value.clientWidth === 0) {
+    // retry later
+    setTimeout(initChart, 100)
+    return
+  }
+
   chartInstance = echarts.init(chartRef.value, props.theme)
   chartInstance.setOption(props.option, true)
 
@@ -36,6 +45,12 @@ function initChart() {
   })
 
   emit('chart-ready', chartInstance)
+
+  // auto-resize when container size changes
+  resizeObserver = new ResizeObserver(() => {
+    resize()
+  })
+  resizeObserver.observe(chartRef.value)
 }
 
 function resize() {
@@ -53,6 +68,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', resize)
+  resizeObserver?.disconnect()
   chartInstance?.dispose()
   chartInstance = null
 })
