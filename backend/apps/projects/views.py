@@ -1,6 +1,7 @@
+from django.apps import apps
 from django.db.models import Count, Q
 from rest_framework import status, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
@@ -185,3 +186,110 @@ class ProjectTemplateViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def dashboard(request):
+    """仪表盘聚合数据"""
+    user = request.user
+
+    # 用户可访问的项目
+    if user.is_staff:
+        projects = Project.objects.all()
+    else:
+        projects = Project.objects.filter(
+            Q(visibility=Project.Visibility.PUBLIC)
+            | Q(owner=user)
+            | Q(members__user=user)
+        ).distinct()
+
+    project_ids = list(projects.values_list('id', flat=True))
+
+    # 任务查询
+    Task = apps.get_model('tasks', 'Task')
+    tasks = Task.objects.filter(project_id__in=project_ids) if project_ids else Task.objects.none()
+
+    # 冲刺查询
+    Sprint = apps.get_model('sprints', 'Sprint')
+    sprints = Sprint.objects.filter(project_id__in=project_ids) if project_ids else Sprint.objects.none()
+
+    # --- 统计 ---
+    total_tasks = tasks.count()
+    done_tasks = tasks.filter(status='done').count()
+    pending_tasks = total_tasks - done_tasks
+    completion_rate = round(done_tasks / total_tasks * 100) if total_tasks > 0 else 0
+
+    stats = {
+        'project_count': projects.count(),
+        'pending_task_count': pending_tasks,
+        'active_sprint_count': sprints.filter(status='active').count(),
+        'completion_rate': completion_rate,
+    }
+
+    # --- 我的任务 ---
+    my_tasks = tasks.filter(assignee=user).exclude(status='done').order_by('-created_at')[:10]
+    my_tasks_data = [
+        {
+            'id': str(t.id),
+            'title': t.title,
+            'priority': t.priority,
+            'status': t.status,
+            'due_date': str(t.due_date) if t.due_date else None,
+            'project_id': str(t.project_id),
+            'project_name': t.project.name,
+        }
+        for t in my_tasks
+    ]
+
+    # --- 最近项目 ---
+    recent_projects = projects.order_by('-created_at')[:5]
+    recent_projects_data = []
+    for p in recent_projects:
+        # 计算进度
+        if p.status == Project.Status.COMPLETED:
+            progress = 100
+        else:
+            try:
+                from django.db.models import Avg
+                avg = Task.objects.filter(project=p).aggregate(avg_progress=Avg('progress'))['avg_progress']
+                progress = round(avg) if avg else 0
+            except Exception:
+                progress = 0
+        recent_projects_data.append({
+            'id': str(p.id),
+            'name': p.name,
+            'progress': progress,
+            'status': p.status,
+        })
+
+    # --- 最近活动 ---
+    activities = []
+    # 最近创建的任务
+    recent_created = tasks.order_by('-created_at')[:5]
+    for t in recent_created:
+        activities.append({
+            'id': f'create_{t.id}',
+            'content': f'创建了任务「{t.title}」',
+            'time': t.created_at.strftime('%Y-%m-%d %H:%M') if t.created_at else '',
+            'project_name': t.project.name,
+        })
+    # 最近完成的任务
+    recent_done = tasks.filter(status='done').order_by('-updated_at')[:5]
+    for t in recent_done:
+        activities.append({
+            'id': f'done_{t.id}',
+            'content': f'完成了任务「{t.title}」',
+            'time': t.updated_at.strftime('%Y-%m-%d %H:%M') if t.updated_at else '',
+            'project_name': t.project.name,
+        })
+    # 按时间倒序取最近15条
+    activities.sort(key=lambda a: a['time'], reverse=True)
+    activities = activities[:15]
+
+    return Response({
+        'stats': stats,
+        'my_tasks': my_tasks_data,
+        'recent_projects': recent_projects_data,
+        'activities': activities,
+    })

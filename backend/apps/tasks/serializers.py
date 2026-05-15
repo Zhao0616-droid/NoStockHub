@@ -51,8 +51,9 @@ class TaskDetailSerializer(serializers.ModelSerializer):
 class TaskCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
-        fields = ['title', 'description', 'type', 'priority', 'start_date', 'due_date', 
+        fields = ['id', 'title', 'description', 'type', 'priority', 'start_date', 'due_date',
                   'estimated_hours', 'project', 'sprint', 'parent_task', 'assignee']
+        read_only_fields = ['id']
 
     def validate(self, data):
         if data.get('due_date') and data.get('start_date'):

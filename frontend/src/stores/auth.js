@@ -25,11 +25,12 @@ export const useAuthStore = defineStore('auth', () => {
       }
       
       // 正常登录流程
-      accessToken.value = res.access
-      refreshToken.value = res.refresh
+      const token = res.token || res
+      accessToken.value = token.access
+      refreshToken.value = token.refresh
       user.value = res.user
-      localStorage.setItem('access_token', res.access)
-      localStorage.setItem('refresh_token', res.refresh)
+      localStorage.setItem('access_token', token.access)
+      localStorage.setItem('refresh_token', token.refresh)
       
       return { success: true }
     } catch (error) {
@@ -44,14 +45,15 @@ export const useAuthStore = defineStore('auth', () => {
         code
       })
       
-      accessToken.value = res.access
-      refreshToken.value = res.refresh
+      const token = res.token || res
+      accessToken.value = token.access
+      refreshToken.value = token.refresh
       user.value = res.user
       twoFactorRequired.value = false
       twoFactorToken.value = ''
-      
-      localStorage.setItem('access_token', res.access)
-      localStorage.setItem('refresh_token', res.refresh)
+
+      localStorage.setItem('access_token', token.access)
+      localStorage.setItem('refresh_token', token.refresh)
       
       return { success: true }
     } catch (error) {

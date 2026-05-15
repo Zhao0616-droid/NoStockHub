@@ -112,6 +112,5 @@ export const fileAPI = {
 
 // 仪表盘
 export const dashboardAPI = {
-  list: () => request.get('/dashboards/'),
-  create: (data) => request.post('/dashboards/', data),
+  summary: () => request.get('/dashboard/'),
 }
