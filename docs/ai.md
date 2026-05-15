@@ -231,3 +231,35 @@
 - 公共文件（urls.py、settings.py）采用”一人编辑 + PR Review”模式，减少冲突
 - 建立模块接口 Mock 约定：后端先提供 JSON 格式 Mock 响应，前端可独立开发不阻塞
 - 增加每周进度同步机制，及时调整分工
+
+---
+
+## 11. 交互场景十：accounts 认证模块开发与环境调试
+
+### 日期
+2026-05-08
+
+### 原始提示词
+"前置工作已完成，请告知我的开发任务及步骤，并协助完成 accounts 模块的代码实现与接口验证。"
+
+### AI 输出摘要
+- 阅读项目结构与前置代码（core/models.py、sql/init.sql、config/settings/base.py），梳理刘经纬的 6 项任务并按依赖顺序排列：models → settings → serializers → views → urls → admin
+- 生成 accounts 模块完整代码：User(AbstractUser, TimestampedModel) 自定义用户模型（含 Role 模型）、RegisterSerializer / LoginSerializer / UserSerializer 三个序列化器、RegisterView / LoginView / UserProfileView 三个视图、JWT 认证路由（register / login / token/refresh / profile）
+- 修改 config/settings/base.py 取消 AUTH_USER_MODEL = 'accounts.User' 注释，启用自定义用户模型
+- 修复 Docker 环境两个问题：(1) Dockerfile apt-get 网络失败 → 添加阿里云 Debian 镜像源；(2) 后端启动时 MySQL 未就绪 → docker-compose.yml 为 db 服务添加 healthcheck（mysqladmin ping），backend 的 depends_on 升级为 condition: service_healthy
+- 定位接口测试失败根因：sql/init.sql 手动建表缺少 Django AbstractUser 默认字段（is_superuser/is_staff/date_joined），通过 DROP DATABASE + Django migrate 重建匹配表结构
+- 确认后端认证路由前缀为 /api/auth/（非 /api/accounts/），提供 PowerShell 环境下的 Invoke-RestMethod 测试命令和 Git 合并冲突处理流程（merge --abort → pull --no-edit → push）
+
+### 可能存在的问题
+- sql/init.sql 中手动建表与 Django AbstractUser 模型字段不兼容，当前通过 DROP DATABASE + migrate 临时解决，后续其他模块的表（如 projects、tasks 等）也可能遇到类似字段缺失问题
+- docker-compose.yml 中 db 服务挂载了 ./sql/init.sql 到 /docker-entrypoint-initdb.d/，每次重建数据库容器都会重新执行建表脚本，可能覆盖或冲突 migrate 生成的表结构
+- Django settings 中 base.py 的 DEBUG = False + ALLOWED_HOSTS = []，Docker 开发环境下不便于调试；建议开发时使用 dev.py（DEBUG=True, ALLOWED_HOSTS=['*']）
+- 前端 Login.vue 中 authAPI.register 调用的 API 路径需与后端实际路径 /api/auth/register/ 对齐，前后端联调时需验证
+- notifications 模块尚未开发，但前端 layout 组件可能已引用通知 store（stores/notification.js），需关注联调依赖
+
+### 迭代优化
+- 移除 sql/init.sql 中 accounts_role 和 accounts_user 建表语句，交给 Django migrations 管理，避免手动 SQL 与 ORM 模型冲突
+- 建议刘经纬后续任务按优先级排：accounts/admin.py（Django Admin 配置）→ notifications/models.py（通知模型）→ notifications 完整链路（serializers + views + urls）
+- accounts 模块后续迭代应增加：密码重置、邮箱验证、角色权限 CRUD 接口、登录失败锁定与双因素认证
+- 项目应补充 .env.example 文件，明确 DB_PASSWORD 等环境变量的默认值，降低新成员环境搭建成本
+- 建议团队统一使用 docker-compose down -v 清理卷后重建标准流程，减少手动操作数据库带来的环境不一致

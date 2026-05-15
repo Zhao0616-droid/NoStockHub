@@ -61,10 +61,10 @@
 - [ ] `apps/accounts/serializers.py` 注册/登录/资料序列化器
 - [ ] `apps/accounts/views.py` JWT 登录/注册/Token刷新/资料修改/改密
 - [ ] `apps/accounts/urls.py` 认证路由
-- [ ] `apps/notifications/models.py` Notification
-- [ ] `apps/notifications/views.py` 通知列表/标记已读/全部已读
-- [ ] `sql/init.sql` 按模型变更同步更新
-- [ ] Django Admin 后台配置
+- [x] `apps/notifications/models.py` Notification
+- [x] `apps/notifications/views.py` 通知列表/标记已读/全部已读
+- [x] `sql/init.sql` 按模型变更同步更新
+- [x] Django Admin 后台配置
 
 #### 周硕 — tasks + worklogs
 - [ ] `apps/tasks/models.py` Task / TaskDependency / Comment / Mention
