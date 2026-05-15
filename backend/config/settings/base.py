@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     'django_filters',
     'drf_spectacular',
     # Local apps
+    'core',
     'apps.accounts',
     'apps.projects',
     'apps.tasks',

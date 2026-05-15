@@ -1,15 +1,28 @@
 <template>
   <div class="login-page">
     <!-- 错误提示条 -->
-    <el-alert v-if="errorMessage" title="登录失败" type="error" :closable="true" @close="errorMessage = ''" class="error-alert" />
+    <el-alert 
+      v-if="errorMessage" 
+      title="登录失败" 
+      type="error" 
+      :closable="true" 
+      @close="errorMessage = ''" 
+      class="error-alert" 
+    />
 
     <div class="login-card">
       <h1 class="login-title">软件项目管理平台</h1>
       <p class="login-subtitle">NoStackHub</p>
       
-      <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @keyup.enter="handleLogin">
+      <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
         <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username" placeholder="请输入用户名" prefix-icon="User" clearable />
+          <el-input 
+            v-model="form.username" 
+            placeholder="请输入用户名" 
+            prefix-icon="User" 
+            clearable 
+            @keyup.enter="handleLogin"
+          />
         </el-form-item>
         <el-form-item label="密码" prop="password">
           <el-input 
@@ -19,6 +32,7 @@
             prefix-icon="Lock" 
             show-password 
             clearable 
+            @keyup.enter="handleLogin"
           />
         </el-form-item>
         <el-form-item>
@@ -40,13 +54,18 @@
 
       <p class="register-link">没有账号？<el-link type="primary" @click="showRegister = true">立即注册</el-link></p>
       <el-divider style="margin: 16px 0" />
-      <el-button type="warning" size="small" class="dev-btn" @click="devLogin" style="width: 100%">
+      <el-button type="warning" size="small" style="width: 100%" @click="devLogin">
         开发模式快速登录（test/123456）
       </el-button>
     </div>
 
     <!-- 注册对话框 -->
-    <el-dialog v-model="showRegister" title="用户注册" width="420px" :close-on-click-modal="false">
+    <el-dialog 
+      v-model="showRegister" 
+      title="用户注册" 
+      width="420px" 
+      :close-on-click-modal="false"
+    >
       <el-form ref="registerFormRef" :model="registerForm" :rules="registerRules" label-position="top">
         <el-form-item label="用户名" prop="username">
           <el-input v-model="registerForm.username" placeholder="3-20个字符" clearable />
@@ -55,7 +74,13 @@
           <el-input v-model="registerForm.email" type="email" placeholder="请输入有效邮箱" clearable />
         </el-form-item>
         <el-form-item label="密码" prop="password">
-          <el-input v-model="registerForm.password" type="password" show-password placeholder="至少6位" clearable />
+          <el-input 
+            v-model="registerForm.password" 
+            type="password" 
+            show-password 
+            placeholder="至少6位" 
+            clearable 
+          />
         </el-form-item>
         <el-form-item label="手机号" prop="phone">
           <el-input v-model="registerForm.phone" placeholder="可选" clearable />
@@ -125,7 +150,6 @@ async function handleLogin() {
     await auth.login(form.username, form.password)
     ElMessage.success('登录成功')
     
-    // 如果记住我，保存到localStorage
     if (form.remember) {
       localStorage.setItem('remember_username', form.username)
     } else {
@@ -150,10 +174,7 @@ async function handleRegister() {
     await authAPI.register(registerForm)
     ElMessage.success('注册成功，请登录')
     showRegister.value = false
-    registerForm.username = ''
-    registerForm.email = ''
-    registerForm.password = ''
-    registerForm.phone = ''
+    Object.assign(registerForm, { username: '', email: '', password: '', phone: '' })
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '注册失败')
   } finally {
