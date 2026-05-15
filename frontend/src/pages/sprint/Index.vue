@@ -37,10 +37,13 @@
     </el-card>
 
     <!-- 燃尽图对话框 -->
-    <el-dialog v-model="showBurndown" title="燃尽图" width="700px">
-      <div class="burndown-chart" style="height:350px;background:#f5f7fa;display:flex;align-items:center;justify-content:center">
-        <p style="color:#909399">燃尽图 — 使用 ECharts 渲染 (理想线 vs 实际线)</p>
-      </div>
+    <el-dialog v-model="showBurndown" title="燃尽图" width="720px" @opened="onBurndownOpened">
+      <BurndownChart
+        :dates="burndownDates"
+        :ideal="burndownIdeal"
+        :actual="burndownActual"
+        height="380px"
+      />
     </el-dialog>
 
     <!-- 创建冲刺对话框 -->
@@ -66,8 +69,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
+import { BurndownChart } from '@/components/charts'
 
 const showCreate = ref(false)
 const showBurndown = ref(false)
@@ -76,12 +80,23 @@ const form = ref({ name: '', goal: '', start_date: '', end_date: '' })
 const activeSprint = ref({
   id: 's1', name: 'Sprint 1', goal: '完成用户认证与项目管理模块', status: 'active',
   start_date: '2026-05-01', end_date: '2026-05-14', progress: 60,
-  tasks: [{ id: 't1', title: '设计ER图' }, { id: 't2', title: '编写API' }]
+  tasks: [{ id: 't1', title: '设计ER图' }, { id: 't2', title: '编写API' }, { id: 't3', title: '代码审查' }]
 })
 
 const plannedSprints = ref([
   { id: 's2', name: 'Sprint 2', goal: '完成核心功能', start_date: '2026-05-15', end_date: '2026-05-28', status: 'planning' }
 ])
+
+// --------------- 燃尽图数据 ---------------
+const burndownDates = ['5/1','5/2','5/3','5/4','5/5','5/6','5/7','5/8','5/9','5/10','5/11','5/12','5/13','5/14']
+const burndownIdeal = [20, 18.5, 17, 15.5, 14, 12.5, 11, 9.5, 8, 6.5, 5, 3.5, 2, 0]
+const burndownActual = [20, 19, 18, 16, 15, 14, 13, 11, 10, 9, 8, 6, 5, 3]
+
+function onBurndownOpened() {
+  nextTick(() => {
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 100)
+  })
+}
 
 function createSprint() { ElMessage.success('冲刺创建成功'); showCreate.value = false }
 function startSprint() { ElMessage.success('冲刺已启动') }
