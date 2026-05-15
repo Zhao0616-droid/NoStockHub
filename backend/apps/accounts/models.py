@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from core.models import TimestampedModel
@@ -20,6 +21,7 @@ class Role(TimestampedModel):
 
 class User(AbstractUser):
     """用户模型"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True, verbose_name='邮箱')
     phone = models.CharField(max_length=20, blank=True, verbose_name='手机号')
     avatar = models.URLField(blank=True, verbose_name='头像URL')

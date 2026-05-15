@@ -25,6 +25,7 @@ services:
     ports:
       - "8000:8000"
     environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.base
       - DB_HOST=db
       - DB_PASSWORD=${DB_PASSWORD:-root}
       - REDIS_URL=redis://redis:6379/0
@@ -38,6 +39,7 @@ services:
     volumes:
       - ./backend:/app
     environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.base
       - DB_HOST=db
       - DB_PASSWORD=${DB_PASSWORD:-root}
       - REDIS_URL=redis://redis:6379/0
@@ -52,6 +54,8 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    environment:
+      - VITE_API_TARGET=http://backend:8000
     depends_on:
       - backend
 
