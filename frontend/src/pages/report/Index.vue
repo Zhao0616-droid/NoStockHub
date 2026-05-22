@@ -43,10 +43,10 @@
         <div class="tab-content">
           <!-- 统计卡片行 -->
           <div class="stat-row">
-            <StatCard :value="stats.totalTasks" label="任务总数" color="#409EFF" :icon="List" :trend="8" />
-            <StatCard :value="stats.completedTasks" label="已完成" color="#67C23A" :icon="CircleCheck" :trend="12" />
-            <StatCard :value="stats.totalHours" label="总工时" color="#E6A23C" suffix="h" :icon="Timer" :trend="-3" />
-            <StatCard :value="stats.completionRate" label="完成率" color="#F56C6C" suffix="%" :icon="TrendCharts" :trend="5" :decimals="1" />
+            <StatCard :value="stats.totalTasks" label="任务总数" color="#409EFF" :icon="List" />
+            <StatCard :value="stats.completedTasks" label="已完成" color="#67C23A" :icon="CircleCheck" />
+            <StatCard :value="stats.totalHours" label="总工时" color="#E6A23C" suffix="h" :icon="Timer" />
+            <StatCard :value="stats.completionRate" label="完成率" color="#F56C6C" suffix="%" :icon="TrendCharts" :decimals="1" />
           </div>
 
           <!-- 进度环形图 + 任务分布 -->
@@ -197,7 +197,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, nextTick } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown, Document, Grid, List, CircleCheck, Timer, TrendCharts, Coin, User } from '@element-plus/icons-vue'
@@ -205,14 +205,15 @@ import {
   StatCard, ProgressRing, BurndownChart,
   TaskDistribution, TrendChart
 } from '@/components/charts'
+import { reportAPI, taskAPI, worklogAPI, sprintAPI } from '@/api'
 
 const route = useRoute()
 const projectId = route.params.id
 
 // --------------- 日期范围 ---------------
 const dateRange = ref([
-  new Date(2026, 4, 1),
-  new Date(2026, 4, 31)
+  new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+  new Date()
 ])
 
 const dateShortcuts = [
@@ -220,8 +221,6 @@ const dateShortcuts = [
   { text: '本月', value: () => { const e = new Date(); return [new Date(e.getFullYear(), e.getMonth(), 1), e] } },
   { text: '上个月', value: () => { const e = new Date(); const s = new Date(e.getFullYear(), e.getMonth() - 1, 1); return [s, new Date(e.getFullYear(), e.getMonth(), 0)] } }
 ]
-
-function applyDateRange() { /* filter data by date range */ }
 
 // --------------- Tab ---------------
 const activeTab = ref('overview')
@@ -232,122 +231,220 @@ function onTabChange() {
   })
 }
 
-// --------------- 概览统计 ---------------
-const stats = reactive({
-  totalTasks: 30,
-  completedTasks: 18,
-  totalHours: 256.5,
-  completionRate: 60
-})
+// --------------- Data loading ---------------
+const loading = ref(false)
+const allTasks = ref([])
+const allWorklogs = ref([])
+const sprintList = ref([])
 
-const statusDistData = [
-  { name: '待办', value: 8, color: '#909399' },
-  { name: '进行中', value: 5, color: '#409EFF' },
-  { name: '审核中', value: 3, color: '#E6A23C' },
-  { name: '已完成', value: 12, color: '#67C23A' },
-  { name: '阻塞', value: 2, color: '#F56C6C' }
-]
-
-const priorityDistData = [
-  { name: '低', value: 6, color: '#909399' },
-  { name: '中', value: 10, color: '#409EFF' },
-  { name: '高', value: 8, color: '#E6A23C' },
-  { name: '紧急', value: 4, color: '#F56C6C' }
-]
-
-// --------------- 任务统计 ---------------
-const trendDates = ['5/1','5/2','5/3','5/4','5/5','5/6','5/7','5/8','5/9','5/10','5/11','5/12','5/13','5/14']
-
-const completionTrendSeries = [
-  { name: '完成任务', data: [1,2,3,1,4,2,5,3,2,6,4,3,5,4], color: '#67C23A' }
-]
-
-const createVsCompleteSeries = [
-  { name: '新增任务', data: [3,4,5,2,6,3,7,4,5,3,6,4,8,5], color: '#F56C6C' },
-  { name: '完成任务', data: [1,2,3,1,4,2,5,3,2,6,4,3,5,4], color: '#67C23A' }
-]
-
-const assigneeDistData = [
-  { name: '张三', value: 12, color: '#409EFF' },
-  { name: '李四', value: 8, color: '#67C23A' },
-  { name: '王五', value: 6, color: '#E6A23C' },
-  { name: '赵六', value: 4, color: '#909399' }
-]
-
-const typeDistData = [
-  { name: '任务', value: 18, color: '#409EFF' },
-  { name: '缺陷', value: 7, color: '#F56C6C' },
-  { name: '史诗', value: 5, color: '#E6A23C' }
-]
-
-// --------------- 工时分析 ---------------
-const worklogStats = reactive({
-  totalHours: 256.5,
-  avgHoursPerDay: 6.4,
-  billableHours: 210,
-  activeMembers: 4
-})
-
-const worklogDates = ['5/1','5/2','5/3','5/4','5/5','5/6','5/7','5/8','5/9','5/10','5/11','5/12','5/13','5/14']
-
-const worklogTrendSeries = [
-  { name: '计划工时', data: [8,8,8,8,8,0,0,8,8,8,8,8,8,8], color: '#909399' },
-  { name: '实际工时', data: [7,8.5,6,9,7.5,0,0,8,6.5,7,8,9,7,6], color: '#409EFF' }
-]
-
-const memberWorklogData = [
-  { name: '张三', value: 85, color: '#409EFF' },
-  { name: '李四', value: 62, color: '#67C23A' },
-  { name: '王五', value: 48, color: '#E6A23C' },
-  { name: '赵六', value: 61.5, color: '#F56C6C' }
-]
-
-// --------------- 燃尽图 ---------------
-const selectedSprint = ref('s1')
-const sprintList = [
-  { id: 's1', name: 'Sprint 1', dateRange: '5/1 - 5/14' },
-  { id: 's2', name: 'Sprint 2', dateRange: '5/15 - 5/28' }
-]
-
-const currentSprint = computed(() => sprintList.find(s => s.id === selectedSprint.value))
-
-const burndownDates = ['5/1','5/2','5/3','5/4','5/5','5/6','5/7','5/8','5/9','5/10','5/11','5/12','5/13','5/14']
-const burndownIdeal = [20,18.5,17,15.5,14,12.5,11,9.5,8,6.5,5,3.5,2,0]
-const burndownActual = [20,19,18,16,15,14,13,11,10,9,8,6,5,3]
-
-// --------------- 报表历史 ---------------
-const reports = ref([
-  { id: 'r1', name: 'Sprint1 进度报告', type: 'progress', format: 'pdf', status: 'ready', file_path: '/reports/r1.pdf', created_at: '2026-05-07 14:30' },
-  { id: 'r2', name: '5月工时统计表', type: 'worklog_summary', format: 'excel', status: 'ready', file_path: '/reports/r2.xlsx', created_at: '2026-05-01 09:00' },
-  { id: 'r3', name: '任务完成趋势报告', type: 'task_list', format: 'csv', status: 'generating', file_path: '', created_at: '2026-05-15 10:15' }
-])
-
-// --------------- Methods ---------------
-function handleExport(format) {
-  ElMessage.success(`正在生成 ${format.toUpperCase()} 报表，请稍候...`)
-  // 模拟：3 秒后将报表加入历史
-  const typeMap = {
-    overview: 'progress',
-    tasks: 'task_list',
-    worklog: 'worklog_summary',
-    burndown: 'burndown'
-  }
-  setTimeout(() => {
-    reports.value.unshift({
-      id: `r${Date.now()}`,
-      name: `${currentSprint.value?.name || '项目'}报表`,
-      type: typeMap[activeTab.value] || 'progress',
-      format,
-      status: 'ready',
-      file_path: `/reports/r${Date.now()}.${format}`,
-      created_at: new Date().toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-')
-    })
-    ElMessage.success(`${format.toUpperCase()} 报表已生成`)
-  }, 2000)
+function formatDateStr(d) {
+  if (!d) return ''
+  const date = new Date(d)
+  return `${date.getMonth() + 1}/${date.getDate()}`
 }
 
-function downloadReport(row) {
-  ElMessage.success(`开始下载: ${row.name}`)
+const statusColors = { todo: '#909399', in_progress: '#409EFF', review: '#E6A23C', done: '#67C23A', blocked: '#F56C6C' }
+const statusLabels = { todo: '待办', in_progress: '进行中', review: '审核中', done: '已完成', blocked: '阻塞' }
+const priorityColors = { low: '#909399', medium: '#409EFF', high: '#E6A23C', urgent: '#F56C6C' }
+const priorityLabels = { low: '低', medium: '中', high: '高', urgent: '紧急' }
+
+// --------------- 概览统计 (computed from real data) ---------------
+const stats = computed(() => {
+  const total = allTasks.value.length
+  const completed = allTasks.value.filter(t => t.status === 'done').length
+  const hours = allWorklogs.value.reduce((sum, w) => sum + (Number(w.hours) || 0), 0)
+  const rate = total > 0 ? Math.round((completed / total) * 1000) / 10 : 0
+  return { totalTasks: total, completedTasks: completed, totalHours: hours, completionRate: rate }
+})
+
+const statusDistData = computed(() => {
+  const map = {}
+  allTasks.value.forEach(t => {
+    const key = t.status || 'todo'
+    map[key] = (map[key] || 0) + 1
+  })
+  return Object.entries(map).map(([k, v]) => ({ name: statusLabels[k] || k, value: v, color: statusColors[k] || '#909399' }))
+})
+
+const priorityDistData = computed(() => {
+  const map = {}
+  allTasks.value.forEach(t => {
+    const key = t.priority || 'medium'
+    map[key] = (map[key] || 0) + 1
+  })
+  return Object.entries(map).map(([k, v]) => ({ name: priorityLabels[k] || k, value: v, color: priorityColors[k] || '#409EFF' }))
+})
+
+// --------------- 任务统计 ---------------
+const trendDates = computed(() => {
+  const dates = new Set()
+  allTasks.value.forEach(t => {
+    if (t.due_date) dates.add(t.due_date)
+    if (t.created_at) dates.add(t.created_at.slice(0, 10))
+  })
+  return [...dates].sort().map(d => formatDateStr(d))
+})
+
+const completionTrendSeries = computed(() => {
+  const byDate = {}
+  allTasks.value.filter(t => t.status === 'done' && t.due_date).forEach(t => {
+    byDate[t.due_date] = (byDate[t.due_date] || 0) + 1
+  })
+  const dates = [...new Set(allTasks.value.filter(t => t.due_date).map(t => t.due_date))].sort()
+  let acc = 0
+  return [{ name: '完成任务(累计)', data: dates.map(d => { acc += (byDate[d] || 0); return acc }), color: '#67C23A' }]
+})
+
+const createVsCompleteSeries = computed(() => {
+  const created = {}, completed = {}
+  allTasks.value.forEach(t => {
+    const cd = t.created_at ? t.created_at.slice(0, 10) : null
+    if (cd) created[cd] = (created[cd] || 0) + 1
+    if (t.status === 'done' && t.due_date) completed[t.due_date] = (completed[t.due_date] || 0) + 1
+  })
+  const dates = [...new Set([...Object.keys(created), ...Object.keys(completed)])].sort()
+  return [
+    { name: '新增任务', data: dates.map(d => created[d] || 0), color: '#F56C6C' },
+    { name: '完成任务', data: dates.map(d => completed[d] || 0), color: '#67C23A' }
+  ]
+})
+
+const assigneeDistData = computed(() => {
+  const map = {}
+  allTasks.value.forEach(t => {
+    const name = t.assignee_detail?.username || t.assignee?.username || '未分配'
+    map[name] = (map[name] || 0) + 1
+  })
+  const colors = ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399']
+  return Object.entries(map).map(([name, value], i) => ({ name, value, color: colors[i % colors.length] }))
+})
+
+const typeDistData = computed(() => {
+  const map = {}
+  allTasks.value.forEach(t => {
+    const key = t.type || 'task'
+    const label = { task: '任务', bug: '缺陷', epic: '史诗' }[key] || key
+    map[label] = (map[label] || 0) + 1
+  })
+  return Object.entries(map).map(([name, value], i) => ({
+    name, value,
+    color: ['#409EFF', '#F56C6C', '#E6A23C'][i] || '#909399'
+  }))
+})
+
+// --------------- 工时分析 ---------------
+const worklogStats = computed(() => {
+  const totalHours = allWorklogs.value.reduce((s, w) => s + (Number(w.hours) || 0), 0)
+  const uniqueDays = new Set(allWorklogs.value.map(w => w.date || w.created_at?.slice(0, 10))).size
+  const billableHours = allWorklogs.value.filter(w => w.is_billable !== false).reduce((s, w) => s + (Number(w.hours) || 0), 0)
+  const activeMembers = new Set(allWorklogs.value.map(w => w.user_id || w.user)).size
+  return {
+    totalHours,
+    avgHoursPerDay: uniqueDays > 0 ? Math.round((totalHours / uniqueDays) * 10) / 10 : 0,
+    billableHours,
+    activeMembers
+  }
+})
+
+const worklogDates = computed(() => {
+  return [...new Set(allWorklogs.value.map(w => (w.date || w.created_at?.slice(0, 10) || '')))]
+    .filter(Boolean).sort().map(d => formatDateStr(d))
+})
+
+const worklogTrendSeries = computed(() => {
+  const byDate = {}
+  allWorklogs.value.forEach(w => {
+    const d = w.date || w.created_at?.slice(0, 10)
+    if (d) byDate[d] = (byDate[d] || 0) + (Number(w.hours) || 0)
+  })
+  const dates = [...new Set(allWorklogs.value.map(w => w.date || w.created_at?.slice(0, 10)))].filter(Boolean).sort()
+  return [{ name: '实际工时', data: dates.map(d => byDate[d] || 0), color: '#409EFF' }]
+})
+
+const memberWorklogData = computed(() => {
+  const map = {}
+  allWorklogs.value.forEach(w => {
+    const name = w.user_detail?.username || w.user?.username || '未知'
+    map[name] = (map[name] || 0) + (Number(w.hours) || 0)
+  })
+  const colors = ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C']
+  return Object.entries(map).map(([name, value], i) => ({ name, value, color: colors[i % colors.length] }))
+})
+
+// --------------- 燃尽图 ---------------
+const selectedSprint = ref('')
+const currentSprint = computed(() => sprintList.value.find(s => s.id === selectedSprint.value))
+
+const burndownDates = ref([])
+const burndownIdeal = ref([])
+const burndownActual = ref([])
+
+async function loadBurndown(sprintId) {
+  if (!sprintId) return
+  try {
+    const data = await sprintAPI.burndown(sprintId)
+    burndownDates.value = data.dates || []
+    burndownIdeal.value = data.ideal_line || []
+    burndownActual.value = data.actual_line || []
+  } catch {
+    burndownDates.value = []
+    burndownIdeal.value = []
+    burndownActual.value = []
+  }
+}
+
+watch(selectedSprint, (id) => { if (id) loadBurndown(id) })
+
+// --------------- 报表历史 ---------------
+const reports = ref([])
+
+async function loadReports() {
+  try {
+    const res = await reportAPI.list({ project_id: projectId })
+    reports.value = res.results || res || []
+  } catch { /* keep empty */ }
+}
+
+// --------------- Methods ---------------
+async function handleExport(format) {
+  try {
+    const typeMap = {
+      overview: 'progress',
+      tasks: 'task_list',
+      worklog: 'worklog_summary',
+      burndown: 'burndown'
+    }
+    const name = `${currentSprint.value?.name || '项目'}报表`
+    await reportAPI.generate({
+      type: typeMap[activeTab.value] || 'progress',
+      project_id: projectId,
+      name,
+      parameters: {
+        date_from: dateRange.value[0]?.toISOString?.()?.slice(0, 10),
+        date_to: dateRange.value[1]?.toISOString?.()?.slice(0, 10),
+        format
+      }
+    })
+    ElMessage.success(`${format.toUpperCase()} 报表生成请求已提交`)
+    await loadReports()
+  } catch (e) {
+    ElMessage.error('生成报表失败')
+  }
+}
+
+async function downloadReport(row) {
+  try {
+    const blob = await reportAPI.download(row.id)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${row.name || 'report'}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('下载成功')
+  } catch {
+    ElMessage.error('下载失败，报表可能尚未生成')
+  }
 }
 
 async function deleteReport(row) {
@@ -368,6 +465,35 @@ function typeLabel(type) {
 function formatTag(format) {
   return { pdf: 'danger', excel: 'success', csv: '' }[format] || 'info'
 }
+
+// --------------- Init ---------------
+async function loadAllData() {
+  loading.value = true
+  try {
+    const [tasksRes, worklogsRes, sprintsRes] = await Promise.all([
+      taskAPI.list({ project_id: projectId }).catch(() => ({ results: [] })),
+      worklogAPI.list({ project_id: projectId }).catch(() => ({ results: [] })),
+      sprintAPI.list({ project_id: projectId }).catch(() => ({ results: [] })),
+    ])
+    allTasks.value = tasksRes.results || tasksRes || []
+    allWorklogs.value = worklogsRes.results || worklogsRes || []
+    sprintList.value = (sprintsRes.results || sprintsRes || []).map(s => ({
+      ...s,
+      dateRange: `${formatDateStr(s.start_date)} - ${formatDateStr(s.end_date)}`
+    }))
+    if (sprintList.value.length) {
+      selectedSprint.value = sprintList.value[0].id
+      loadBurndown(selectedSprint.value)
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  loadAllData()
+  loadReports()
+})
 </script>
 
 <style scoped lang="scss">

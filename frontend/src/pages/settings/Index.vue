@@ -209,6 +209,7 @@ onMounted(async () => {
     // 获取用户信息
     const userProfile = await authAPI.profile()
     Object.assign(profile.value, userProfile)
+    twoFactorEnabled.value = userProfile.two_factor_enabled || false
     
     // 获取通知偏好
     const prefs = await notificationAPI.getNotificationPreferences()

@@ -94,9 +94,9 @@ export const notificationAPI = {
   markAllRead: () => request.post('/notifications/read-all/'),
   unreadCount: () => request.get('/notifications/unread-count/'),
   getNotificationPreferences: () => Promise.resolve({
-    task_assigned: true, status_change: true, comment_mention: true, email_notification: false
+    preferences: ['task_assigned', 'status_change', 'comment_mention']
   }),
-  updateNotificationPreferences: (data) => Promise.resolve(data),
+  updateNotificationPreferences: (data) => Promise.resolve({ success: true, ...data }),
 }
 
 // 报表

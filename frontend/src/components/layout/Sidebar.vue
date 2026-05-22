@@ -74,5 +74,5 @@ const projectId = computed(() => route.params.id)
   height: 56px; display: flex; align-items: center; justify-content: center;
   color: #fff; font-size: 18px; font-weight: bold; border-bottom: 1px solid #4a5568;
 }
-.el-menu { border-right: none; flex: 1; }
+.el-menu { border-right: none; flex: 1; overflow-y: auto; }
 </style>

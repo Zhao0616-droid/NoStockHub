@@ -66,9 +66,12 @@
         style="width: 140px"
         @change="applyFilters"
       >
-        <el-option label="张三" value="u1" />
-        <el-option label="李四" value="u2" />
-        <el-option label="王五" value="u3" />
+        <el-option
+          v-for="m in memberOptions"
+          :key="m.id"
+          :label="m.username"
+          :value="m.id"
+        />
       </el-select>
       <el-button
         v-if="hasActiveFilters"
@@ -181,6 +184,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Edit, Delete } from '@element-plus/icons-vue'
 import { useTaskStore } from '@/stores/task'
+import { projectAPI } from '@/api'
 import TaskDialog from '@/components/common/TaskDialog.vue'
 import PriorityTag from '@/components/common/PriorityTag.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
@@ -191,6 +195,7 @@ const taskStore = useTaskStore()
 
 // --------------- 筛选 ---------------
 const searchText = ref('')
+const memberOptions = ref([])
 const filters = ref({
   status: [],
   priority: '',
@@ -310,9 +315,17 @@ async function loadTasks() {
   await taskStore.fetchTasks({ project_id: projectId })
 }
 
-onMounted(() => {
+onMounted(async () => {
   taskStore.setFilters({ project_id: projectId })
-  loadTasks()
+  await loadTasks()
+  // 加载项目成员用于筛选
+  if (projectId) {
+    try {
+      const res = await projectAPI.members(projectId)
+      const list = res.results || res || []
+      memberOptions.value = list.map(m => ({ id: m.user?.id, username: m.user?.username || '-' }))
+    } catch { /* keep empty */ }
+  }
 })
 
 // 监听项目切换

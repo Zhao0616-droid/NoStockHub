@@ -6,7 +6,7 @@
         <h2>{{ project?.name }}</h2>
       </div>
       <div>
-        <el-button @click="editMode = true">编辑</el-button>
+        <el-button @click="openEditDialog">编辑</el-button>
         <el-button type="primary" @click="$router.push(`/projects/${id}/board`)">进入看板</el-button>
       </div>
     </div>
@@ -46,7 +46,7 @@
             <span>{{ m.user?.username }}</span>
             <el-tag size="small">{{ roleLabel(m.role) }}</el-tag>
           </div>
-          <el-button text type="primary" style="margin-top:8px">+ 邀请成员</el-button>
+          <el-button text type="primary" style="margin-top:8px" @click="openInviteDialog">+ 邀请成员</el-button>
         </el-card>
       </el-col>
       <el-col :span="12">
@@ -61,13 +61,71 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <!-- 编辑项目对话框 -->
+    <el-dialog v-model="showEditDialog" title="编辑项目" width="520px" :close-on-click-modal="false">
+      <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-width="80px">
+        <el-form-item label="项目名称" prop="name">
+          <el-input v-model="editForm.name" />
+        </el-form-item>
+        <el-form-item label="描述" prop="description">
+          <el-input v-model="editForm.description" type="textarea" :rows="3" />
+        </el-form-item>
+        <el-form-item label="开始日期" prop="start_date">
+          <el-date-picker v-model="editForm.start_date" type="date" value-format="YYYY-MM-DD" style="width:100%" />
+        </el-form-item>
+        <el-form-item label="结束日期" prop="end_date">
+          <el-date-picker v-model="editForm.end_date" type="date" value-format="YYYY-MM-DD" style="width:100%" />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="editForm.status" style="width:100%">
+            <el-option label="规划中" value="planning" />
+            <el-option label="进行中" value="active" />
+            <el-option label="已完成" value="completed" />
+            <el-option label="暂停" value="on_hold" />
+            <el-option label="已取消" value="cancelled" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="可见性">
+          <el-radio-group v-model="editForm.visibility">
+            <el-radio value="public">公开</el-radio>
+            <el-radio value="private">私密</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showEditDialog = false">取消</el-button>
+        <el-button type="primary" @click="saveProject" :loading="saving">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 邀请成员对话框 -->
+    <el-dialog v-model="showInviteDialog" title="邀请成员" width="440px" :close-on-click-modal="false">
+      <el-form ref="inviteFormRef" :model="inviteForm" :rules="inviteRules" label-width="80px">
+        <el-form-item label="用户ID" prop="user_id">
+          <el-input v-model="inviteForm.user_id" placeholder="输入用户ID (UUID)" />
+        </el-form-item>
+        <el-form-item label="角色" prop="role">
+          <el-select v-model="inviteForm.role" style="width:100%">
+            <el-option label="成员" value="member" />
+            <el-option label="观察者" value="viewer" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showInviteDialog = false">取消</el-button>
+        <el-button type="primary" @click="inviteMember" :loading="inviting">邀请</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useProjectStore } from '@/stores/project'
+import { projectAPI, taskAPI } from '@/api'
 import StatusTag from '@/components/common/StatusTag.vue'
 
 const route = useRoute()
@@ -75,12 +133,89 @@ const id = route.params.id
 const store = useProjectStore()
 
 const loading = ref(false)
-const editMode = ref(false)
+const saving = ref(false)
+const inviting = ref(false)
 const project = ref(null)
 const members = ref([])
 const milestones = ref([])
-const totalTasks = ref(0)
-const doneTasks = ref(0)
+const taskStats = ref({ total: 0, done: 0 })
+
+// --------------- 编辑 ---------------
+const showEditDialog = ref(false)
+const editFormRef = ref(null)
+const editForm = reactive({
+  name: '',
+  description: '',
+  start_date: '',
+  end_date: '',
+  status: '',
+  visibility: 'public',
+})
+const editRules = {
+  name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
+}
+
+function openEditDialog() {
+  if (!project.value) return
+  Object.assign(editForm, {
+    name: project.value.name || '',
+    description: project.value.description || '',
+    start_date: project.value.start_date || '',
+    end_date: project.value.end_date || '',
+    status: project.value.status || 'planning',
+    visibility: project.value.visibility || 'public',
+  })
+  showEditDialog.value = true
+}
+
+async function saveProject() {
+  const valid = await editFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+  saving.value = true
+  try {
+    const payload = { ...editForm }
+    project.value = await projectAPI.update(id, payload)
+    ElMessage.success('项目已更新')
+    showEditDialog.value = false
+  } catch {
+    ElMessage.error('更新失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+// --------------- 邀请成员 ---------------
+const showInviteDialog = ref(false)
+const inviteFormRef = ref(null)
+const inviteForm = reactive({ user_id: '', role: 'member' })
+const inviteRules = {
+  user_id: [{ required: true, message: '请输入用户ID', trigger: 'blur' }],
+  role: [{ required: true, message: '请选择角色', trigger: 'change' }],
+}
+
+function openInviteDialog() {
+  inviteForm.user_id = ''
+  inviteForm.role = 'member'
+  showInviteDialog.value = true
+}
+
+async function inviteMember() {
+  const valid = await inviteFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+  inviting.value = true
+  try {
+    await projectAPI.addMember(id, { user_id: inviteForm.user_id, role: inviteForm.role })
+    ElMessage.success('成员已邀请')
+    showInviteDialog.value = false
+    // 刷新成员列表
+    const res = await projectAPI.members(id)
+    members.value = res.results || res || []
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '邀请失败')
+  } finally {
+    inviting.value = false
+  }
+}
 
 function roleLabel(role) {
   return { manager: '管理者', member: '成员', viewer: '观察者' }[role] || role
@@ -91,12 +226,22 @@ const progressColor = computed(() => {
   return p < 30 ? '#F56C6C' : p < 80 ? '#409EFF' : '#67C23A'
 })
 
-import { computed } from 'vue'
-
 onMounted(async () => {
   loading.value = true
   try {
     project.value = await store.fetchProject(id)
+    const [membersRes, milestonesRes, tasksRes] = await Promise.all([
+      projectAPI.members(id).catch(() => []),
+      projectAPI.milestones(id).catch(() => []),
+      taskAPI.list({ project_id: id }).catch(() => []),
+    ])
+    members.value = membersRes.results || membersRes || []
+    milestones.value = milestonesRes.results || milestonesRes || []
+    const taskList = tasksRes.results || tasksRes || []
+    taskStats.value = {
+      total: taskList.length,
+      done: taskList.filter(t => t.status === 'done').length,
+    }
   } finally {
     loading.value = false
   }

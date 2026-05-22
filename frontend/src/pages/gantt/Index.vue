@@ -23,17 +23,6 @@
           <template #reference>
             <el-button size="small" :icon="Filter">筛选</el-button>
           </template>
-          <el-select
-            v-model="filters.assignee_id"
-            placeholder="负责人"
-            clearable
-            style="width:100%;margin-bottom:8px"
-            @change="applyFilters"
-          >
-            <el-option label="张三" value="u1" />
-            <el-option label="李四" value="u2" />
-            <el-option label="王五" value="u3" />
-          </el-select>
           <el-checkbox
             v-model="filters.showMilestones"
             style="width:100%;margin-bottom:4px"
@@ -90,6 +79,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from
 import { useRoute } from 'vue-router'
 import * as echarts from 'echarts'
 import { ArrowLeft, ArrowRight, Filter } from '@element-plus/icons-vue'
+import { projectAPI } from '@/api'
 
 const route = useRoute()
 const projectId = route.params.id
@@ -119,10 +109,22 @@ function goToday() {
   dateOffset.value = 0
 }
 
+function getStatusColor(status) {
+  return { todo: '#909399', in_progress: '#409EFF', review: '#E6A23C', done: '#67C23A', blocked: '#F56C6C' }[status] || '#909399'
+}
+
+// --------------- 数据 ---------------
+const loading = ref(false)
+const tasks = ref([])
+const milestones = ref([])
+const dependencies = ref([])
+
+const baseDate = ref(new Date())
+
 const dateRangeLabel = computed(() => {
   const days = viewModeDays.value
   const offset = dateOffset.value * days
-  const start = new Date(2026, 4, 1)
+  const start = new Date(baseDate.value)
   start.setDate(start.getDate() + offset)
   const end = new Date(start)
   end.setDate(end.getDate() + days - 1)
@@ -132,7 +134,6 @@ const dateRangeLabel = computed(() => {
 
 // --------------- 筛选 ---------------
 const filters = reactive({
-  assignee_id: '',
   showMilestones: true,
   showDependencies: true
 })
@@ -140,42 +141,6 @@ const filters = reactive({
 function applyFilters() {
   nextTick(renderChart)
 }
-
-// --------------- Mock 数据 ---------------
-const loading = ref(false)
-
-const tasks = ref([
-  { id: 't1', title: '设计ER图', type: 'task', status: 'done', priority: 'high', start_date: '2026-05-01', due_date: '2026-05-05', assignee: { id: 'u1', username: '张三' }, progress: 100, color: '#67C23A' },
-  { id: 't2', title: '编写API文档', type: 'task', status: 'in_progress', priority: 'medium', start_date: '2026-05-04', due_date: '2026-05-10', assignee: { id: 'u2', username: '李四' }, progress: 60, color: '#409EFF' },
-  { id: 't3', title: '用户认证模块', type: 'epic', status: 'in_progress', priority: 'urgent', start_date: '2026-05-03', due_date: '2026-05-14', assignee: { id: 'u1', username: '张三' }, progress: 45, color: '#E6A23C' },
-  { id: 't4', title: '代码审查', type: 'task', status: 'todo', priority: 'low', start_date: '2026-05-09', due_date: '2026-05-13', assignee: { id: 'u3', username: '王五' }, progress: 0, color: '#909399' },
-  { id: 't5', title: '部署测试', type: 'task', status: 'blocked', priority: 'high', start_date: '2026-05-12', due_date: '2026-05-20', assignee: { id: 'u1', username: '张三' }, progress: 10, color: '#F56C6C' },
-  { id: 't6', title: '前端页面开发', type: 'task', status: 'in_progress', priority: 'high', start_date: '2026-05-07', due_date: '2026-05-18', assignee: { id: 'u2', username: '李四' }, progress: 30, color: '#409EFF' },
-  { id: 't7', title: '编写单元测试', type: 'task', status: 'todo', priority: 'medium', start_date: '2026-05-15', due_date: '2026-05-25', assignee: { id: 'u3', username: '王五' }, progress: 0, color: '#909399' }
-])
-
-const milestones = ref([
-  { id: 'm1', name: '需求评审', date: '2026-05-01' },
-  { id: 'm2', name: '原型交付', date: '2026-05-15' },
-  { id: 'm3', name: '测试完成', date: '2026-05-25' }
-])
-
-const dependencies = ref([
-  { from: 't1', to: 't2' },
-  { from: 't1', to: 't3' },
-  { from: 't2', to: 't4' },
-  { from: 't3', to: 't5' },
-  { from: 't4', to: 't5' },
-  { from: 't2', to: 't6' }
-])
-
-const filteredTasks = computed(() => {
-  let list = tasks.value
-  if (filters.assignee_id) {
-    list = list.filter(t => t.assignee?.id === filters.assignee_id)
-  }
-  return list
-})
 
 // --------------- ECharts ---------------
 const chartRef = ref(null)
@@ -191,21 +156,19 @@ function renderChart() {
     chartInstance = echarts.init(chartRef.value)
   }
 
-  const baseDate = new Date(2026, 4, 1)
   const viewDays = viewModeDays.value
-  const viewStart = new Date(baseDate)
+  const viewStart = new Date(baseDate.value)
   viewStart.setDate(viewStart.getDate() + dateOffset.value * viewDays)
   const viewStartTime = +viewStart
   const viewEndTime = viewStartTime + viewDays * dayMs
 
-  const items = filteredTasks.value
+  const items = tasks.value
   const showMilestones = filters.showMilestones
   const showDeps = filters.showDependencies
-  const todayTime = +new Date(2026, 4, 7)
+  const todayTime = +new Date()
 
   const yData = items.map(t => t.title)
 
-  // 任务条数据
   const barData = items.map((t, i) => {
     const start = +new Date(t.start_date)
     const end = +new Date(t.due_date)
@@ -213,15 +176,14 @@ function renderChart() {
     return {
       name: t.title,
       value: [i, start, end, duration, t.progress],
-      itemStyle: { color: t.color || '#409EFF' },
+      itemStyle: { color: t.color || getStatusColor(t.status) },
       task: t
     }
   })
 
-  // 里程碑
   const milestoneData = showMilestones
     ? milestones.value.map(m => {
-        const mt = +new Date(m.date)
+        const mt = +new Date(m.due_date || m.date)
         const row = Math.max(0, items.length ? items.length - 1 : 0)
         return {
           name: m.name,
@@ -232,12 +194,13 @@ function renderChart() {
       })
     : []
 
-  // 依赖连线
   const depLines = []
   if (showDeps) {
     dependencies.value.forEach(dep => {
-      const fromIdx = items.findIndex(t => t.id === dep.from)
-      const toIdx = items.findIndex(t => t.id === dep.to)
+      const fromId = dep.predecessor_id || dep.from
+      const toId = dep.successor_id || dep.to
+      const fromIdx = items.findIndex(t => t.id === fromId)
+      const toIdx = items.findIndex(t => t.id === toId)
       if (fromIdx === -1 || toIdx === -1) return
       const fromTask = items[fromIdx]
       const toTask = items[toIdx]
@@ -258,12 +221,11 @@ function renderChart() {
           const t = params.data.task
           return `<strong>${t.title}</strong><br/>
             ${t.start_date} → ${t.due_date}<br/>
-            负责人: ${t.assignee?.username || '-'}<br/>
             进度: ${t.progress}%<br/>
             状态: ${statusLabel(t.status)}`
         }
         if (params.seriesType === 'scatter' && params.name) {
-          return `◆ 里程碑: ${params.name}<br/>${params.value[1]}`
+          return `◆ 里程碑: ${params.name}`
         }
         return ''
       }
@@ -290,7 +252,6 @@ function renderChart() {
       axisLine: { show: false }
     },
     series: [
-      // 任务条
       {
         type: 'custom',
         renderItem: (params, api) => {
@@ -307,7 +268,6 @@ function renderChart() {
 
           const children = []
 
-          // 背景半透明条
           children.push({
             type: 'rect',
             shape: { x: barX, y: barY, width: barW, height: BAR_HEIGHT },
@@ -315,7 +275,6 @@ function renderChart() {
             z: 1
           })
 
-          // 进度条
           if (progress > 0) {
             children.push({
               type: 'rect',
@@ -325,7 +284,6 @@ function renderChart() {
             })
           }
 
-          // 边框
           children.push({
             type: 'rect',
             shape: { x: barX, y: barY, width: barW, height: BAR_HEIGHT },
@@ -339,7 +297,6 @@ function renderChart() {
         encode: { x: [1, 2], y: 0 },
         z: 10
       },
-      // 今天标记线
       {
         type: 'line',
         markLine: {
@@ -350,7 +307,6 @@ function renderChart() {
           label: { show: true, formatter: '今天', fontSize: 11, color: '#F56C6C' }
         }
       },
-      // 里程碑
       {
         type: 'scatter',
         data: milestoneData,
@@ -359,7 +315,6 @@ function renderChart() {
         z: 20,
         encode: { x: 1, y: 0 }
       },
-      // 依赖连线
       {
         type: 'lines',
         coordinateSystem: 'cartesian2d',
@@ -395,8 +350,35 @@ function statusLabel(s) {
 // --------------- 响应式 ---------------
 function handleResize() { chartInstance?.resize() }
 
+async function loadGanttData() {
+  loading.value = true
+  try {
+    const res = await projectAPI.gantt(projectId)
+    tasks.value = (res.tasks || []).map(t => ({
+      ...t,
+      color: getStatusColor(t.status),
+    }))
+    milestones.value = res.milestones || []
+    dependencies.value = (res.dependencies || []).map(d => ({
+      from: d.predecessor_id,
+      to: d.successor_id,
+    }))
+
+    // Base view on earliest task date
+    const dates = tasks.value.flatMap(t => [t.start_date, t.due_date].filter(Boolean))
+    if (dates.length) {
+      baseDate.value = new Date(Math.min(...dates.map(d => +new Date(d))))
+    }
+  } catch {
+    // silently fail, empty state shows
+  } finally {
+    loading.value = false
+    nextTick(renderChart)
+  }
+}
+
 onMounted(() => {
-  nextTick(renderChart)
+  loadGanttData()
   window.addEventListener('resize', handleResize)
 })
 
