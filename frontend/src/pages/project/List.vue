@@ -100,8 +100,8 @@ async function handleCreate() {
   creating.value = true
   try {
     const payload = { ...form.value }
-    if (!payload.start_date) payload.start_date = null
-    if (!payload.end_date) payload.end_date = null
+    payload.start_date = payload.start_date ? new Date(payload.start_date).toISOString().slice(0, 10) : null
+    payload.end_date = payload.end_date ? new Date(payload.end_date).toISOString().slice(0, 10) : null
     await store.createProject(payload)
     ElMessage.success('项目创建成功')
     showCreate.value = false

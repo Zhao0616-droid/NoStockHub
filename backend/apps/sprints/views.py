@@ -88,8 +88,8 @@ class SprintViewSet(viewsets.ModelViewSet):
         sprint.save(update_fields=['status'])
         return Response(SprintSerializer(sprint).data)
 
-    @action(detail=True, methods=['get', 'post', 'delete'], url_path='tasks')
-    def manage_tasks(self, request, pk=None):
+    @action(detail=True, methods=['get', 'post', 'delete'], url_path='tasks(?:/(?P<task_id>[^/.]+))?')
+    def manage_tasks(self, request, pk=None, task_id=None):
         sprint = self.get_object()
         Task = _get_task_model()
         if Task is None:
@@ -97,6 +97,24 @@ class SprintViewSet(viewsets.ModelViewSet):
                 {'detail': 'Tasks module is not available.'},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
+
+        if request.method == 'DELETE':
+            target_id = task_id or request.query_params.get('task_id')
+            if not target_id:
+                return Response(
+                    {'detail': 'task_id is required.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            try:
+                task = Task.objects.get(id=target_id, sprint=sprint)
+            except Task.DoesNotExist:
+                return Response(
+                    {'detail': 'Task not found in this sprint.'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            task.sprint = None
+            task.save(update_fields=['sprint'])
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
         if request.method == 'GET':
             tasks = Task.objects.filter(sprint=sprint).order_by('order', 'created_at')
@@ -121,24 +139,6 @@ class SprintViewSet(viewsets.ModelViewSet):
             task.sprint = sprint
             task.save(update_fields=['sprint'])
             return Response({'detail': 'Task added to sprint.'}, status=status.HTTP_200_OK)
-
-        # DELETE
-        task_id = request.query_params.get('task_id')
-        if not task_id:
-            return Response(
-                {'detail': 'task_id query parameter is required.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        try:
-            task = Task.objects.get(id=task_id, sprint=sprint)
-        except Task.DoesNotExist:
-            return Response(
-                {'detail': 'Task not found in this sprint.'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        task.sprint = None
-        task.save(update_fields=['sprint'])
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['get'])
     def burndown(self, request, pk=None):

@@ -8,6 +8,9 @@ export const authAPI = {
   profile: () => request.get('/auth/profile/'),
   updateProfile: (data) => request.put('/auth/profile/', data),
   changePassword: (data) => request.post('/auth/change-password/', data),
+  enableTwoFactor: () => request.post('/auth/enable-two-factor/'),
+  disableTwoFactor: () => request.post('/auth/disable-two-factor/'),
+  verifyTwoFactor: (data) => request.post('/auth/verify-two-factor/', data),
 }
 
 // 项目
@@ -71,6 +74,7 @@ export const sprintAPI = {
   complete: (id) => request.post(`/sprints/${id}/complete/`),
   addTask: (id, data) => request.post(`/sprints/${id}/tasks/`, data),
   removeTask: (id, taskId) => request.delete(`/sprints/${id}/tasks/${taskId}/`),
+  listTasks: (id) => request.get(`/sprints/${id}/tasks/`),
   burndown: (id) => request.get(`/sprints/${id}/burndown/`),
 }
 
@@ -88,6 +92,11 @@ export const notificationAPI = {
   list: (params) => request.get('/notifications/', { params }),
   markRead: (id) => request.post(`/notifications/${id}/read/`),
   markAllRead: () => request.post('/notifications/read-all/'),
+  unreadCount: () => request.get('/notifications/unread-count/'),
+  getNotificationPreferences: () => Promise.resolve({
+    task_assigned: true, status_change: true, comment_mention: true, email_notification: false
+  }),
+  updateNotificationPreferences: (data) => Promise.resolve(data),
 }
 
 // 报表

@@ -83,8 +83,7 @@ const formRef = ref()
 const saving = ref(false)
 const form = ref(getDefaultForm())
 const rules = {
-  title: [{ required: true, message: '请输入任务标题', trigger: 'blur' }],
-  assignee_id: [{ required: true, message: '请选择负责人', trigger: 'change' }]
+  title: [{ required: true, message: '请输入任务标题', trigger: 'blur' }]
 }
 
 function getDefaultForm() {
@@ -108,11 +107,20 @@ async function handleSave() {
   if (!valid) return
   saving.value = true
   try {
+    const payload = {
+      ...form.value,
+      project: form.value.project_id || props.projectId,
+      assignee: form.value.assignee_id || null,
+      start_date: form.value.start_date ? new Date(form.value.start_date).toISOString().slice(0, 10) : null,
+      due_date: form.value.due_date ? new Date(form.value.due_date).toISOString().slice(0, 10) : null,
+    }
+    delete payload.project_id
+    delete payload.assignee_id
     if (props.task) {
-      await taskStore.updateTask(props.task.id, form.value)
+      await taskStore.updateTask(props.task.id, payload)
       ElMessage.success('任务更新成功')
     } else {
-      await taskStore.createTask(form.value)
+      await taskStore.createTask(payload)
       ElMessage.success('任务创建成功')
     }
     emit('saved')
