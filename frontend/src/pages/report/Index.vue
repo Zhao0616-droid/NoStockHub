@@ -169,9 +169,9 @@
         <el-table-column prop="type" label="类型" width="120">
           <template #default="{ row }">{{ typeLabel(row.type) }}</template>
         </el-table-column>
-        <el-table-column prop="format" label="格式" width="80">
+        <el-table-column label="格式" width="80">
           <template #default="{ row }">
-            <el-tag size="small" :type="formatTag(row.format)">{{ row.format.toUpperCase() }}</el-tag>
+            <el-tag size="small" :type="formatTag(row.parameters?.format)">{{ (row.parameters?.format || 'csv').toUpperCase() }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="created_at" label="生成时间" width="170" />
@@ -224,6 +224,11 @@ const dateShortcuts = [
 
 // --------------- Tab ---------------
 const activeTab = ref('overview')
+
+function applyDateRange() {
+  // 日期范围变更时重新加载数据
+  loadAllData()
+}
 
 function onTabChange() {
   nextTick(() => {

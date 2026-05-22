@@ -73,7 +73,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
@@ -90,6 +90,14 @@ const showRegister = ref(false)
 const errorMessage = ref('')
 
 const form = reactive({ username: '', password: '', remember: false })
+
+onMounted(() => {
+  const saved = localStorage.getItem('remember_username')
+  if (saved) {
+    form.username = saved
+    form.remember = true
+  }
+})
 const rules = {
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },

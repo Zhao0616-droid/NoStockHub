@@ -105,13 +105,13 @@ const router = createRouter({
 })
 
 // 路由守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const auth = useAuthStore()
   const token = localStorage.getItem('access_token')
-  
+
   // 更新页面标题
   document.title = `${to.meta.title || '软件项目管理平台'} - NoStackHub`
-  
+
   // 检查是否需要认证
   if (to.meta.requiresAuth === false) {
     // 不需要认证的页面
@@ -121,23 +121,34 @@ router.beforeEach((to, from, next) => {
     } else {
       next()
     }
-  } else {
-    // 需要认证的页面
-    if (!token) {
-      // 未登录，重定向到登录页
+    return
+  }
+
+  // 需要认证的页面
+  if (!token) {
+    next('/login')
+    return
+  }
+
+  // 有 token 但没有用户信息，验证 token 有效性
+  if (!auth.user) {
+    try {
+      await auth.fetchProfile()
+    } catch {
+      // token 无效，清除并跳转登录
+      auth.logout()
       next('/login')
-    } else if (auth.twoFactorRequired) {
-      // 需要双因素认证
-      if (to.path === '/two-factor') {
-        next()
-      } else {
-        next('/two-factor')
-      }
-    } else {
-      // 已认证，允许访问
-      next()
+      return
     }
   }
+
+  // 需要双因素认证
+  if (auth.twoFactorRequired && to.path !== '/two-factor') {
+    next('/two-factor')
+    return
+  }
+
+  next()
 })
 
 router.afterEach((to, from) => {
