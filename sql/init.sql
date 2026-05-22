@@ -3,6 +3,14 @@
 -- 基于架构文档 architect.md 中的 ER 图生成
 -- 数据库: MySQL 8.0+ | 字符集: utf8mb4
 -- ===================================================
+--
+-- 维护约定（与 Django 对齐）：
+-- • accounts_*、notifications_* 等由 Django migrations 创建，请勿在此 CREATE。
+-- • 以下为历史/占位 DDL，仅存数据列与外键到外键已由 Django 负责的表；
+--   不在此声明指向 accounts_user 的外键，避免 MySQL 在 migrate 前就要求用户表必须先存在。
+-- • 若本地曾用旧版 init.sql 建过 notifications_notification，迁移前请先 DROP TABLE
+--   notifications_notification（或清空 volume），避免与 Django 建表冲突。
+-- ===================================================
 
 CREATE DATABASE IF NOT EXISTS project_platform
   DEFAULT CHARACTER SET utf8mb4
@@ -11,38 +19,8 @@ CREATE DATABASE IF NOT EXISTS project_platform
 USE project_platform;
 
 -- ===================================================
--- 1. 用户与权限模块
+-- 1. 用户与权限模块 → 全部由 Django migrations 管理（accounts_role / accounts_user 等）
 -- ===================================================
-
--- 角色表
-CREATE TABLE IF NOT EXISTS accounts_role (
-    id CHAR(36) PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE,
-    description VARCHAR(200) DEFAULT '',
-    permissions JSON NOT NULL COMMENT '权限列表, 格式: {"project:create": true, "task:delete": false}',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
-
--- 用户表
-CREATE TABLE IF NOT EXISTS accounts_user (
-    id CHAR(36) PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    phone VARCHAR(20) DEFAULT '',
-    avatar VARCHAR(255) DEFAULT '',
-    role_id CHAR(36) DEFAULT NULL,
-    role ENUM('admin', 'manager', 'member') DEFAULT 'member',
-    is_active TINYINT(1) DEFAULT 1,
-    two_factor_enabled TINYINT(1) DEFAULT 0,
-    last_login DATETIME DEFAULT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (role_id) REFERENCES accounts_role(id) ON DELETE SET NULL,
-    INDEX idx_user_email (email),
-    INDEX idx_user_username (username)
-) ENGINE=InnoDB;
 
 -- ===================================================
 -- 2. 项目管理模块
@@ -56,8 +34,7 @@ CREATE TABLE IF NOT EXISTS projects_projecttemplate (
     config JSON NOT NULL COMMENT '模板配置: 默认阶段、看板列、任务类型等',
     created_by CHAR(36) NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (created_by) REFERENCES accounts_user(id) ON DELETE CASCADE
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 -- 项目表
@@ -73,7 +50,6 @@ CREATE TABLE IF NOT EXISTS projects_project (
     template_id CHAR(36) DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (owner_id) REFERENCES accounts_user(id),
     FOREIGN KEY (template_id) REFERENCES projects_projecttemplate(id) ON DELETE SET NULL,
     INDEX idx_project_status (status),
     INDEX idx_project_owner (owner_id)
@@ -87,8 +63,7 @@ CREATE TABLE IF NOT EXISTS projects_projectmember (
     role ENUM('manager', 'member', 'viewer') DEFAULT 'member',
     joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_project_user (project_id, user_id),
-    FOREIGN KEY (project_id) REFERENCES projects_project(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES accounts_user(id) ON DELETE CASCADE
+    FOREIGN KEY (project_id) REFERENCES projects_project(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- 里程碑表
@@ -152,8 +127,6 @@ CREATE TABLE IF NOT EXISTS tasks_task (
     FOREIGN KEY (project_id) REFERENCES projects_project(id) ON DELETE CASCADE,
     FOREIGN KEY (sprint_id) REFERENCES sprints_sprint(id) ON DELETE SET NULL,
     FOREIGN KEY (parent_task_id) REFERENCES tasks_task(id) ON DELETE CASCADE,
-    FOREIGN KEY (assignee_id) REFERENCES accounts_user(id) ON DELETE SET NULL,
-    FOREIGN KEY (reporter_id) REFERENCES accounts_user(id),
     INDEX idx_task_project (project_id),
     INDEX idx_task_sprint (sprint_id),
     INDEX idx_task_assignee (assignee_id),
@@ -235,7 +208,6 @@ CREATE TABLE IF NOT EXISTS worklogs_worklog (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (task_id) REFERENCES tasks_task(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES accounts_user(id) ON DELETE CASCADE,
     INDEX idx_worklog_task (task_id),
     INDEX idx_worklog_user (user_id),
     INDEX idx_worklog_date (date)
@@ -249,7 +221,6 @@ CREATE TABLE IF NOT EXISTS worklogs_hourlyrate (
     rate DECIMAL(10,2) NOT NULL COMMENT '每小时费率(元)',
     effective_from DATE NOT NULL COMMENT '生效日期',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES accounts_user(id) ON DELETE CASCADE,
     FOREIGN KEY (project_id) REFERENCES projects_project(id) ON DELETE CASCADE,
     UNIQUE KEY uk_user_project_rate (user_id, project_id, effective_from),
     INDEX idx_rate_user (user_id),
@@ -270,7 +241,6 @@ CREATE TABLE IF NOT EXISTS tasks_comment (
     parent_comment_id CHAR(36) DEFAULT NULL COMMENT '父评论ID, 用于嵌套回复',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (author_id) REFERENCES accounts_user(id) ON DELETE CASCADE,
     FOREIGN KEY (task_id) REFERENCES tasks_task(id) ON DELETE CASCADE,
     FOREIGN KEY (project_id) REFERENCES projects_project(id) ON DELETE CASCADE,
     FOREIGN KEY (parent_comment_id) REFERENCES tasks_comment(id) ON DELETE CASCADE,
@@ -287,32 +257,12 @@ CREATE TABLE IF NOT EXISTS tasks_mention (
     is_read TINYINT(1) DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (comment_id) REFERENCES tasks_comment(id) ON DELETE CASCADE,
-    FOREIGN KEY (mentioned_user_id) REFERENCES accounts_user(id) ON DELETE CASCADE,
     UNIQUE KEY uk_mention (comment_id, mentioned_user_id)
 ) ENGINE=InnoDB;
 
 -- ===================================================
--- 8. 通知模块
+-- 8. 通知模块 → 由 Django migrations 管理（notifications_notification）
 -- ===================================================
-
-CREATE TABLE IF NOT EXISTS notifications_notification (
-    id CHAR(36) PRIMARY KEY,
-    user_id CHAR(36) NOT NULL,
-    type ENUM(
-      'task_assigned',  'status_change', 'comment',
-      'deadline',       'mention',       'project_invite',
-      'sprint_start',   'sprint_end'
-    ) NOT NULL,
-    title VARCHAR(200) NOT NULL,
-    content TEXT,
-    is_read TINYINT(1) DEFAULT 0,
-    related_type VARCHAR(50) COMMENT '关联实体类型: Task/Project/Sprint',
-    related_id CHAR(36) COMMENT '关联实体ID',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES accounts_user(id) ON DELETE CASCADE,
-    INDEX idx_notif_user (user_id, is_read),
-    INDEX idx_notif_created (created_at)
-) ENGINE=InnoDB;
 
 -- ===================================================
 -- 9. 文件管理模块
@@ -331,7 +281,6 @@ CREATE TABLE IF NOT EXISTS files_attachment (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (task_id) REFERENCES tasks_task(id) ON DELETE CASCADE,
     FOREIGN KEY (project_id) REFERENCES projects_project(id) ON DELETE CASCADE,
-    FOREIGN KEY (uploader_id) REFERENCES accounts_user(id) ON DELETE CASCADE,
     INDEX idx_attach_task (task_id),
     INDEX idx_attach_project (project_id),
     INDEX idx_attach_uploader (uploader_id)
@@ -350,7 +299,6 @@ CREATE TABLE IF NOT EXISTS core_activitylog (
     new_value TEXT COMMENT '新值',
     changed_by CHAR(36) NOT NULL,
     changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (changed_by) REFERENCES accounts_user(id),
     INDEX idx_activity_entity (entity_type, entity_id),
     INDEX idx_activity_changed_at (changed_at),
     INDEX idx_activity_changed_by (changed_by)
@@ -368,7 +316,6 @@ CREATE TABLE IF NOT EXISTS dashboards_dashboard (
     is_default TINYINT(1) DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES accounts_user(id) ON DELETE CASCADE,
     INDEX idx_dashboard_user (user_id)
 ) ENGINE=InnoDB;
 
@@ -386,19 +333,13 @@ CREATE TABLE IF NOT EXISTS reports_report (
     file_path VARCHAR(500) COMMENT '导出文件路径',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (project_id) REFERENCES projects_project(id) ON DELETE CASCADE,
-    FOREIGN KEY (generated_by) REFERENCES accounts_user(id) ON DELETE CASCADE,
     INDEX idx_report_project (project_id)
 ) ENGINE=InnoDB;
 
 -- ===================================================
--- 初始化预设角色数据
+-- 预设角色数据：由 Django 侧数据迁移 / 管理命令维护，勿在此 INSERT accounts_role
+-- （否则在仅由 migrate 建表时会因无表或重复数据失败。）
 -- ===================================================
-
-INSERT INTO accounts_role (id, name, description, permissions) VALUES
-(UUID(), 'admin', '系统管理员', '{"*": true}'),
-(UUID(), 'project_manager', '项目经理', '{"project:*": true, "task:*": true, "sprint:*": true, "report:*": true}'),
-(UUID(), 'developer', '开发人员', '{"task:create": true, "task:update": true, "task:view": true, "worklog:create": true}'),
-(UUID(), 'viewer', '观察者', '{"task:view": true, "project:view": true}');
 
 -- ===================================================
 -- 初始化默认看板列 (新建项目时可选模板)

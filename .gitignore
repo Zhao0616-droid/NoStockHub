@@ -1,14 +1,9 @@
-<<<<<<< HEAD
-# ===== Python =====
-=======
 # Python
->>>>>>> 14d5edbf12775b8fd48eaad7f972eccce721bd52
 __pycache__/
 *.py[cod]
 *.pyo
 *.egg-info/
 dist/
-<<<<<<< HEAD
 build/
 *.egg
 .eggs/
@@ -18,72 +13,49 @@ build/
 *.po
 *.db
 *.sqlite3
-.env
-.env.*
-=======
-*.egg
 
 # Django
-*.log
 media/
 staticfiles/
 
 # Virtualenv
->>>>>>> 14d5edbf12775b8fd48eaad7f972eccce721bd52
 venv/
 .venv/
 env/
 
-<<<<<<< HEAD
-# ===== Node.js =====
+# Env（不把密钥提交进仓库）
+.env
+.env.*
+.env.local
+
+# Node
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-package-lock.json
-yarn.lock
-
-# ===== IDE / Editor =====
-=======
-# Node
-node_modules/
 dist/
 
 # IDE
->>>>>>> 14d5edbf12775b8fd48eaad7f972eccce721bd52
 .vscode/
 .idea/
 *.swp
 *.swo
-<<<<<<< HEAD
 *~
+
+# OS
 .DS_Store
 Thumbs.db
-
-# ===== Docker =====
-*.tar
-
-# ===== OS =====
 Desktop.ini
 
-# ===== Other =====
+# Docker
+*.tar
+mysql_data/
+
+# Other
 *.tmp
 *.temp
 .cache/
 coverage/
 htmlcov/
 .coverage
-=======
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Env
-.env
-.env.local
-
-# Docker
-mysql_data/
->>>>>>> 14d5edbf12775b8fd48eaad7f972eccce721bd52

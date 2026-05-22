@@ -66,15 +66,17 @@
 
 #### 刘经纬 — accounts + notifications + 数据库
 - [x] `apps/accounts/models.py` User / Role（继承 BaseModel / AbstractUser，UUID 主键）
-- [x] `apps/accounts/serializers.py` 注册/登录/资料序列化器（46行）
-- [x] `apps/accounts/views.py` JWT 登录/注册/Token刷新/资料修改/改密（52行）
+- [x] `apps/accounts/serializers.py` 注册/登录/资料序列化器
+- [x] `apps/accounts/views.py` JWT 登录/注册/Token 刷新/资料修改/改密
 - [x] `apps/accounts/urls.py` 认证路由
-- [x] `apps/accounts/migrations/0001_initial.py` 初始化迁移（69行）
+- [x] `apps/accounts/migrations/0001_initial.py` 初始化迁移
+- [x] `apps/accounts/migrations/0002_align_init_sql_user_schema.py` init.sql 用户表与 Django 对齐
 - [x] `config/settings/base.py` 启用 AUTH_USER_MODEL
-- [ ] `apps/notifications/models.py` Notification
-- [ ] `apps/notifications/views.py` 通知列表/标记已读/全部已读
-- [ ] `sql/init.sql` 按模型变更同步更新
-- [ ] Django Admin 后台配置
+- [x] `apps/notifications/models.py` Notification
+- [x] `apps/notifications/views.py` 通知列表/标记已读/全部已读
+- [x] `apps/notifications/services.py` / `utils.py` 创建通知封装（tasks 模块调用）
+- [x] `sql/init.sql` 按模型变更同步更新
+- [x] Django Admin 后台配置（accounts / notifications 等）
 
 > 产出：完成用户认证模块全栈开发（9 files, 235+ 行），含 JWT 登录/注册/Token 刷新/用户信息接口。
 

@@ -234,7 +234,39 @@
 
 ---
 
-## 11. 交互场景十：任务看板功能实现
+## 11. 交互场景十：accounts 认证模块开发与环境调试
+
+### 日期
+2026-05-08
+
+### 原始提示词
+"前置工作已完成，请告知我的开发任务及步骤，并协助完成 accounts 模块的代码实现与接口验证。"
+
+### AI 输出摘要
+- 阅读项目结构与前置代码（core/models.py、sql/init.sql、config/settings/base.py），梳理刘经纬的 6 项任务并按依赖顺序排列：models → settings → serializers → views → urls → admin
+- 生成 accounts 模块完整代码：User(AbstractUser, TimestampedModel) 自定义用户模型（含 Role 模型）、RegisterSerializer / LoginSerializer / UserSerializer 三个序列化器、RegisterView / LoginView / UserProfileView 三个视图、JWT 认证路由（register / login / token/refresh / profile）
+- 修改 config/settings/base.py 取消 AUTH_USER_MODEL = 'accounts.User' 注释，启用自定义用户模型
+- 修复 Docker 环境两个问题：(1) Dockerfile apt-get 网络失败 → 添加阿里云 Debian 镜像源；(2) 后端启动时 MySQL 未就绪 → docker-compose.yml 为 db 服务添加 healthcheck（mysqladmin ping），backend 的 depends_on 升级为 condition: service_healthy
+- 定位接口测试失败根因：sql/init.sql 手动建表缺少 Django AbstractUser 默认字段（is_superuser/is_staff/date_joined），通过 DROP DATABASE + Django migrate 重建匹配表结构
+- 确认后端认证路由前缀为 /api/auth/（非 /api/accounts/），提供 PowerShell 环境下的 Invoke-RestMethod 测试命令和 Git 合并冲突处理流程（merge --abort → pull --no-edit → push）
+
+### 可能存在的问题
+- sql/init.sql 中手动建表与 Django AbstractUser 模型字段不兼容，当前通过 DROP DATABASE + migrate 临时解决，后续其他模块的表（如 projects、tasks 等）也可能遇到类似字段缺失问题
+- docker-compose.yml 中 db 服务挂载了 ./sql/init.sql 到 /docker-entrypoint-initdb.d/，每次重建数据库容器都会重新执行建表脚本，可能覆盖或冲突 migrate 生成的表结构
+- Django settings 中 base.py 的 DEBUG = False + ALLOWED_HOSTS = []，Docker 开发环境下不便于调试；建议开发时使用 dev.py（DEBUG=True, ALLOWED_HOSTS=['*']）
+- 前端 Login.vue 中 authAPI.register 调用的 API 路径需与后端实际路径 /api/auth/register/ 对齐，前后端联调时需验证
+- notifications 模块尚未开发，但前端 layout 组件可能已引用通知 store（stores/notification.js），需关注联调依赖
+
+### 迭代优化
+- 移除 sql/init.sql 中 accounts_role 和 accounts_user 建表语句，交给 Django migrations 管理，避免手动 SQL 与 ORM 模型冲突
+- 建议刘经纬后续任务按优先级排：accounts/admin.py（Django Admin 配置）→ notifications/models.py（通知模型）→ notifications 完整链路（serializers + views + urls）
+- accounts 模块后续迭代应增加：密码重置、邮箱验证、角色权限 CRUD 接口、登录失败锁定与双因素认证
+- 项目应补充 .env.example 文件，明确 DB_PASSWORD 等环境变量的默认值，降低新成员环境搭建成本
+- 建议团队统一使用 docker-compose down -v 清理卷后重建标准流程，减少手动操作数据库带来的环境不一致
+
+---
+
+## 12. 交互场景十：任务看板功能实现
 
 ### 日期
 2026-05-15
@@ -260,7 +292,7 @@
 
 ---
 
-## 12. 交互场景十一：任务列表功能重构
+## 13. 交互场景十一：任务列表功能重构
 
 ### 日期
 2026-05-15
@@ -284,7 +316,7 @@
 
 ---
 
-## 13. 交互场景十二：甘特图功能实现
+## 14. 交互场景十二：甘特图功能实现
 
 ### 日期
 2026-05-15
@@ -312,7 +344,7 @@
 
 ---
 
-## 14. 交互场景十三：图表组件库建设
+## 15. 交互场景十三：图表组件库建设
 
 ### 日期
 2026-05-15
@@ -343,7 +375,7 @@
 
 ---
 
-## 15. 交互场景十四：项目规范化与工程问题修复
+## 16. 交互场景十四：项目规范化与工程问题修复
 
 ### 日期
 2026-05-15
@@ -366,7 +398,7 @@
 
 ---
 
-## 16. 交互场景十五：项目报表页实现
+## 17. 交互场景十五：项目报表页实现
 
 ### 日期
 2026-05-15
@@ -395,7 +427,7 @@
 
 ---
 
-## 17. 交互场景十六：图表组件运行时问题排查与 ECharts 初始化修复
+## 18. 交互场景十六：图表组件运行时问题排查与 ECharts 初始化修复
 
 ### 日期
 2026-05-15
@@ -428,7 +460,7 @@
 
 ---
 
-## 18. 交互场景十七：注册登录联调与仪表盘真实数据对接
+## 19. 交互场景十七：注册登录联调与仪表盘真实数据对接
 
 ### 日期
 2026-05-15
@@ -444,49 +476,62 @@
   - 修复前端 `auth.js` Token 提取逻辑：`const token = res.token || res` 兼容后端返回的 `{ user, token: { access, refresh } }` 嵌套格式
   - 改进 `Login.vue` 错误解析：递归提取 DRF 多层错误格式（`detail` / `non_field_errors` / 字段级错误数组）
 - **仪表盘去除硬编码数据**：
-  - 后端在 `projects/views.py` 新增 `dashboard` 函数视图（`GET /api/dashboard/`），聚合真实数据库数据：按用户权限过滤项目（owner/member/public）、计算统计卡片（项目数/待办任务数/活跃冲刺数/完成率）、我的任务（按 assignee + 未完成过滤前 10 条）、最近项目（前 5 个，含基于任务进度的实时计算）、最近活动（任务创建 + 完成事件，按时间倒序前 15 条）
-  - 前端 `dashboard/Index.vue` 完全重写：移除全部硬编码 mock 数据，`onMounted` 调用 `dashboardAPI.summary()` 获取真实数据，统计卡片/我的任务/最近项目/活动时间线全部动态渲染
-- **任务模型与迁移对齐修复**：
-  - 修复 `tasks/migrations/0001_initial.py` 中 `description` 缺少 `null=True`（模型有但迁移没有，导致 MySQL 严格模式报 `Column 'description' cannot be null`）
-  - 修复 Task 模型缺少 `order` 字段（迁移有但模型没有，导致 `Field 'order' doesn't have a default value`）
-  - 为 accounts/tasks/worklogs 生成并应用缺失的迁移（`makemigrations` + `migrate`），消除 model-migration 不一致警告
-- **Project 模型 computed 字段修复**：`dashboard` 视图使用 `p.progress` 但 Project 模型无此字段（是 SerializerMethodField），改为在视图中通过 Task 聚合计算平均进度
-- **TaskCreateSerializer 修复**：响应缺少 `id` 字段，添加 `'id'` 到 fields 并设为 `read_only_fields`，确保创建任务后前端可获取任务 ID
-- **项目创建 400 修复**：前端 `project/List.vue` 表单发送空字符串 `start_date: ''` / `end_date: ''`，DRF DateField 拒绝空字符串。在 `handleCreate` 中将 falsy 日期值转为 `null` 后再发送
-- **Folder 图标未解析修复**：`dashboard/Index.vue` 和 `project/List.vue` 使用了 `<el-icon><Folder /></el-icon>` 但未导入，添加 `import { Folder } from '@element-plus/icons-vue'`
+  - 后端在 `projects/views.py` 新增 `dashboard` 函数视图（`GET /api/dashboard/`），聚合真实数据库数据
+  - 前端 `dashboard/Index.vue` 完全重写：`onMounted` 调用 `dashboardAPI.summary()` 获取真实数据
+- **任务模型与迁移对齐修复**：修复 `tasks/migrations/0001_initial.py` 中 `description` 缺少 `null=True`；Task 模型补充 `order` 字段；生成并应用 accounts/tasks/worklogs 缺失迁移
+- **其他修复**：Project 进度聚合、TaskCreateSerializer 返回 `id`、项目创建空日期转 `null`、Folder 图标导入
 
 ### 可能存在的问题
-- Dashboard 中 `goTask` 点击后跳转到项目详情页而非任务详情页（前端暂无任务详情路由），暂时可作为快捷入口
-- `DEBUG=true` 仍保留在 docker-compose.yml 中用于开发调试，正式部署前需移除
-- 开发模式快速登录按钮使用 mock token，与真实后端不兼容，点击后 dashboard 会 401
+- Dashboard 中任务点击暂跳项目详情（暂无任务详情路由）
+- 开发模式快速登录使用 mock token，与真实后端不兼容
 
 ### 迭代优化
-- 后续可增加任务详情路由，使 dashboard 中"我的任务"点击直接进入任务详情
-- Dashboard 活动数据可增加更多事件类型（成员加入/离开、里程碑完成、评论等），当前仅覆盖任务创建和完成
-- 前端项目创建表单可考虑 el-date-picker 清空时返回 null 而非空字符串，从组件层面根治问题
+- 增加任务详情路由；Dashboard 活动类型扩展；日期选择器清空返回 null
 
 ---
 
-## 19. 交互场景十九：解决通知工具函数缺失问题
+## 20. 交互场景十八：通知创建函数与 tasks 模块对接
 
 ### 日期
 2026-05-22
 
 ### 原始提示词
-“项目结构不包含apps/notifications/utils.py这个文件，在不增加文件的条件下，如何解决apps/tasks/view.py文件中的问题”
+"项目结构不包含 apps/notifications/utils.py，`apps/tasks/views.py` 如何调用 create_notification"
 
 ### AI 输出摘要
-- **问题诊断**：`apps/tasks/views.py` 尝试导入 `apps.notifications.utils.create_notification`，但该文件不存在。根据经验记忆，应在不新增文件的前提下通过重构现有代码解决。
-- **解决方案设计**：将 [create_notification](file://d:\VScode\NoStockHub\backend\apps\notifications\utils.py#L3-L11) 逻辑迁移至 `apps/notifications/models.py` 中。这种“胖模型”模式符合 Django 开发规范，且便于跨模块调用而不产生循环依赖。
-- **具体实施步骤**：
-  - 在 `backend/apps/notifications/models.py` 末尾定义 `create_notification(user, type, title, content='', ...)` 辅助函数，直接操作 [Notification](file://d:\VScode\NoStockHub\backend\apps\notifications\models.py#L6-L39) 模型。
-  - 修改 `backend/apps/tasks/views.py` 的导入语句为 `from apps.notifications.models import create_notification`。
-- **优势分析**：避免了创建冗余的 [utils.py](file://d:\VScode\NoStockHub\backend\apps\notifications\utils.py) 文件；保持了业务逻辑（通知发送）与数据模型的高度关联；符合项目中已有的 `core/models.py` 基础类复用风格。
+- **问题**：`tasks/views.py` 在任务分配、状态变更时需发送通知，需统一创建入口且与 `Notification` 模型字段一致（`notification_type` / `db_column='type'`）
+- **最终方案**（合并后保留）：
+  - `apps/notifications/services.py`：`create_notification(recipient=..., notification_type=..., ...)` 主实现
+  - `apps/notifications/utils.py`：薄封装，保留 `create_notification(user=..., type=..., ...)` 签名供 `tasks` 调用
+  - API 层：`ReadOnlyModelViewSet` + `POST …/read/`、`POST …/read-all/`，列表返回 `unread_count`
 
 ### 可能存在的问题
-- 随着功能增多，[models.py](file://d:\VScode\NoStockHub\backend\apps\notifications\models.py) 可能会变得臃肿，包含过多非模型定义的逻辑。
-- 如果未来需要实现复杂的异步通知队列或邮件集成，简单的同步创建函数可能需要进一步优化以支持 Celery 任务。
+- Swagger 列表接口 Example Value 与真实 JSON 形状不完全一致（以 Execute 响应为准）
+- `read-all` 使用 `QuerySet.update()` 不更新 `updated_at`
 
 ### 迭代优化
-- 后续若通知逻辑复杂化，可考虑使用 Django Signals（信号量）机制，在任务状态变更时自动触发通知，进一步解耦 View 层与 Notification 模块。
-- 建议在 `apps/notifications/__init__.py` 中导出该函数，使其他模块可以通过 `from apps.notifications import create_notification` 统一入口调用。
+- 通知量大时可改 Celery 异步；复杂场景可用 Django Signals 解耦 View 与通知
+
+---
+
+## 21. 交互场景十九：Django Admin 配置与 init.sql 维护
+
+### 日期
+2026-05-08 ~ 2026-05-22
+
+### 原始提示词
+"完成 Django Admin 配置，修复 init.sql 中 accounts 表字段冲突；notifications 模块与 SQL 同步"
+
+### AI 输出摘要
+- **`accounts/admin.py`**：`RoleAdmin` + 继承 `BaseUserAdmin` 的 `UserAdmin`（fieldsets 分基本信息/权限与角色/权限控制/时间信息）
+- **`notifications/admin.py`**：按 `notification_type` 字段注册列表与筛选
+- **`sql/init.sql`**：移除 `accounts_*`、`notifications_*` 手动建表及 `INSERT INTO accounts_role`；业务表 DDL 保留占位，约定由 Django migrations 管理用户与通知表
+- **`accounts/migrations/0002_align_init_sql_user_schema.py`**：旧 init.sql 库补齐 `is_superuser`/`is_staff` 等与 M2M 中间表
+- **合并冲突**：notifications views 保留 POST 已读 + `unread_count` 方案；accounts admin 保留完整 `BaseUserAdmin`；远程各 app 的基础 `admin.py` 一并纳入
+
+### 可能存在的问题
+- init.sql 与 migrations 并存时，新环境需 `migrate --fake-initial` 或清空 volume 后按文档初始化
+- 其他模块表仍部分由 init.sql 创建，长期应逐步迁移至 Django migrations
+
+### 迭代优化
+- docker-compose 启动前自动 `migrate`；预置角色改用 data migration / fixture
