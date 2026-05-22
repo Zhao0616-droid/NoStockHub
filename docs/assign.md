@@ -18,8 +18,8 @@
 
 | 成员 | 负责方向 | 具体工作 |
 |------|---------|---------|
-| 王子琪 | 需求分析 + 前端架构 | 功能需求/非功能需求/约束条件撰写、用户故事与用例文档主笔、前端架构初步调研 |
-| 赵嘉诚 | 系统设计 + 整体协调 | 整体任务协调、文档框架规划与验收、系统设计主笔、数据库整体方案 |
+| 王子琪 | 需求分析 + 前端架构 | 功能需求/非功能需求/约束条件撰写、用户故事与用例文档主笔、前端架构初步调研、README 项目结构维护、团队信息更新 |
+| 赵嘉诚 | 系统设计 + 整体协调 | 整体任务协调、文档框架规划与验收、系统设计主笔、数据库整体方案、Docker 部署方案设计 |
 
 
 ## 阶段二：系统设计（已完成）
@@ -37,95 +37,147 @@
 
 | 成员 | 负责方向 | 具体工作 |
 |------|---------|---------|
-| 赵嘉诚 | files + reports | 整体架构设计参与、architect.md、db.md、backend_api.md、ui_design设计 |
+| 赵嘉诚 | 架构设计 + 整体协调 | 整体架构设计参与、architect.md（技术选型/分层架构图/17核心类/ER图/API端点表）、db.md（21张表设计/索引/状态流转）、backend_api.md（OpenAPI 3.0 YAML/60+接口）、ui_design.md（10页面线框图/14公共组件）主笔 |
+| 王子琪 | 需求分析 + 文档 | 需求文档对接、用例补充、团队分工文档更新 |
+| 万晶宇 | 前端核心 | 前端页面框架搭建（10页面+3布局+4共享组件+4 Store）、API层10模块封装、路由配置 |
+| 王恒 | 后端核心 | 后端项目结构初始化、projects 模块设计参与 |
+| 周硕 | 数据库 | 数据库设计参与、sql/init.sql 建表脚本编写 |
+| 刘经纬 | 认证模块 | accounts 模块设计参与、Django Admin 配置方案 |
 
 ---
 
-## 阶段三：编码实现（进行中）
+## 阶段三：编码实现（进展中，部分已完成）
 
 ### 后端团队任务清单
 
 #### 王恒 — 后端架构 + projects + core
-- [ ] `config/settings/` 三环境配置完善（base/dev/prod）
-- [ ] `core/models.py` BaseModel / TimestampedModel
-- [ ] `core/permissions.py` 项目成员权限、管理者权限
+- [x] `config/settings/` 三环境配置完善（base/dev/prod）
+- [x] `core/models.py` BaseModel / TimestampedModel
+- [x] `core/permissions.py` 项目成员权限、管理者权限
 - [ ] `core/pagination.py` 标准分页 + 异常处理
-- [ ] `apps/projects/models.py` Project / ProjectMember / ProjectTemplate / Milestone
-- [ ] `apps/projects/serializers.py` 序列化器（含嵌套/校验）
-- [ ] `apps/projects/views.py` ViewSet（CRUD + 成员管理 + 甘特图数据）
-- [ ] `apps/projects/urls.py` 路由注册
+- [x] `apps/projects/models.py` Project / ProjectMember / ProjectTemplate / Milestone（120行）
+- [x] `apps/projects/serializers.py` 序列化器（含嵌套/校验，177行）
+- [x] `apps/projects/views.py` ViewSet（CRUD + 成员管理 + 甘特图数据，187行）
+- [x] `apps/projects/urls.py` 路由注册
+- [x] `apps/projects/migrations/0001_initial.py` 初始化迁移（105行）
 - [ ] 后端代码 Review（全员）
 
+> 产出：初始化后端项目结构（config/settings/base|dev|prod 三环境 + core/models|permissions），完成 projects 模块全栈（模型/序列化器/视图/路由/迁移），共 30 files, 516+ 行新增。
+
 #### 刘经纬 — accounts + notifications + 数据库
-- [ ] `apps/accounts/models.py` User / Role（继承 BaseModel）
-- [ ] `apps/accounts/serializers.py` 注册/登录/资料序列化器
-- [ ] `apps/accounts/views.py` JWT 登录/注册/Token刷新/资料修改/改密
-- [ ] `apps/accounts/urls.py` 认证路由
+- [x] `apps/accounts/models.py` User / Role（继承 BaseModel / AbstractUser，UUID 主键）
+- [x] `apps/accounts/serializers.py` 注册/登录/资料序列化器
+- [x] `apps/accounts/views.py` JWT 登录/注册/Token 刷新/资料修改/改密
+- [x] `apps/accounts/urls.py` 认证路由
+- [x] `apps/accounts/migrations/0001_initial.py` 初始化迁移
+- [x] `apps/accounts/migrations/0002_align_init_sql_user_schema.py` init.sql 用户表与 Django 对齐
+- [x] `config/settings/base.py` 启用 AUTH_USER_MODEL
 - [x] `apps/notifications/models.py` Notification
 - [x] `apps/notifications/views.py` 通知列表/标记已读/全部已读
+- [x] `apps/notifications/services.py` / `utils.py` 创建通知封装（tasks 模块调用）
 - [x] `sql/init.sql` 按模型变更同步更新
-- [x] Django Admin 后台配置
+- [x] Django Admin 后台配置（accounts / notifications 等）
+
+> 产出：完成用户认证模块全栈开发（9 files, 235+ 行），含 JWT 登录/注册/Token 刷新/用户信息接口。
 
 #### 周硕 — tasks + worklogs
-- [ ] `apps/tasks/models.py` Task / TaskDependency / Comment / Mention
-- [ ] `apps/tasks/serializers.py` 任务序列化器（含嵌套子任务/依赖/评论）
-- [ ] `apps/tasks/views.py` 任务CRUD / 状态流转 / 依赖管理 / 评论
-- [ ] `apps/tasks/urls.py` 任务路由
-- [ ] `apps/worklogs/models.py` WorkLog / HourlyRate
-- [ ] `apps/worklogs/views.py` 工时CRUD / 汇总统计
-- [ ] `apps/worklogs/urls.py` 工时路由
+- [x] `apps/tasks/models.py` Task / TaskDependency / Comment / Mention（110行）
+- [x] `apps/tasks/serializers.py` 任务序列化器（含嵌套子任务/依赖/评论，66行）
+- [x] `apps/tasks/views.py` 任务CRUD / 状态流转 / 依赖管理 / 评论（143行）
+- [x] `apps/tasks/urls.py` 任务路由
+- [x] `apps/worklogs/models.py` WorkLog / HourlyRate（43行）
+- [x] `apps/worklogs/serializers.py` 工时序列化器（18行）
+- [x] `apps/worklogs/views.py` 工时CRUD / 汇总统计（52行）
+- [x] `apps/worklogs/urls.py` 工时路由
 - [ ] 数据库迁移管理（makemigrations + migrate）
 
-#### 赵嘉诚 — kanban + sprints + files + reports
-- [ ] `apps/kanban/models.py` KanbanBoard / KanbanColumn / TaskColumn
-- [ ] `apps/kanban/views.py` 看板CRUD / 列管理 / 移动任务
-- [ ] `apps/sprints/models.py` Sprint
-- [ ] `apps/sprints/views.py` 冲刺CRUD / 启动 / 完成 / 燃尽图数据
-- [ ] `apps/files/views.py` 文件上传(安全校验) / 下载 / 删除
-- [ ] `apps/reports/views.py` 报表异步生成 / 下载
-- [ ] `tasks/celery.py` Celery 异步任务配置
+> 产出：完成任务和工时记录模块全栈开发（8 files, 459+ 行），Task 支持子任务嵌套/依赖关系/评论/@提及，WorkLog 支持工时登记与汇总。
+
+#### 赵嘉诚 — kanban + sprints + files + reports + 整体协调 + 联调修复
+- [x] `apps/kanban/models.py` KanbanBoard / KanbanColumn / TaskColumn（77行）
+- [x] `apps/kanban/serializers.py` 看板序列化器（98行）
+- [x] `apps/kanban/views.py` 看板CRUD / 列管理 / 移动任务（121行）
+- [x] `apps/kanban/urls.py` 看板路由
+- [x] `apps/sprints/models.py` Sprint（37行）
+- [x] `apps/sprints/serializers.py` 冲刺序列化器（125行）
+- [x] `apps/sprints/views.py` 冲刺CRUD / 启动 / 完成 / 燃尽图数据（182行）
+- [x] `apps/sprints/urls.py` 冲刺路由
+- [x] `apps/files/models.py` Attachment（37行）
+- [x] `apps/files/serializers.py` 文件序列化器（32行）
+- [x] `apps/files/views.py` 文件上传(安全校验50MB/MIME白名单) / 下载 / 删除（156行）
+- [x] `apps/files/urls.py` 文件路由
+- [x] `apps/reports/models.py` Report（39行）
+- [x] `apps/reports/serializers.py` 报表序列化器（49行）
+- [x] `apps/reports/views.py` 报表异步生成 / 下载（67行）
+- [x] `apps/reports/tasks.py` Celery 异步任务（138行）
+- [x] `apps/reports/urls.py` 报表路由
+- [x] 4 个模块初始化迁移文件（kanban/sprints/files/reports）
+- [x] `docker-compose.yml` 五服务编排 + Dockerfile
+- [x] 注册登录联调修复（UUID 主键适配、Token 嵌套格式提取、Django 配置切换）
+- [x] 仪表盘后端 API（`GET /api/dashboard/`）对接真实数据，去除硬编码
+- [x] 模型/迁移一致性修复（tasks description null、order 字段、accounts/worklogs 迁移对齐）
+- [x] 系统架构设计、数据库设计、ER 图、API 文档
+
+> 产出：完成 4 个后端模块全栈开发（25 files, 1551+ 行），含看板/冲刺/文件安全上传/报表 Celery 异步生成。主导整体架构设计、Docker 部署、注册登录联调修复、仪表盘真实数据对接、模型迁移对齐等跨模块工作。
 
 ---
 
 ### 前端团队任务清单
 
-#### 王子琪 — 前端架构 + Layout + 认证与路由
-- [ ] `components/layout/AppLayout.vue` 整体布局（侧边栏+顶栏+内容区）
-- [ ] `components/layout/Navbar.vue` 顶栏（面包屑/通知/用户菜单）
-- [ ] `components/layout/Sidebar.vue` 侧边栏（菜单/项目子导航自动切换）
-- [ ] `router/index.js` 路由配置 + 导航守卫（Token校验）
-- [ ] `api/request.js` Axios 拦截器（JWT自动附带+过期刷新）
-- [ ] `api/index.js` 10 个模块 API 方法封装
-- [ ] `pages/settings/Login.vue` 登录/注册表单
-- [ ] `pages/settings/Index.vue` 系统设置页
-- [ ] `stores/auth.js` 认证状态 Store
+#### 王子琪 — 需求分析 + 前端架构 + 文档
+- [x] README.md 项目说明、需求分析（功能需求 9 大模块 + 非功能需求）
+- [x] `docs/user_stories.md` 用户故事（5 类角色共 15 条）
+- [x] `docs/use_cases.md` 用例交互场景（7 个用例）
+- [x] `docs/ai.md` AI 使用记录（初版框架）
+- [x] `docs/assign.md` 团队分工记录
+- [x] 项目顶层目录框架搭建（frontend/ backend/ sql/ docs/）
+
+> 产出：负责需求分析阶段全部文档主笔，项目顶层结构规划，README 团队信息与模块分工维护。
 
 #### 路昊天 — Dashboard + Project 页面 + 公共组件
-- [ ] `pages/dashboard/Index.vue` 仪表盘（统计卡片/我的任务/项目/活动流）
-- [ ] `pages/project/List.vue` 项目列表（卡片网格/搜索/状态筛选/创建弹窗）
-- [ ] `pages/project/Detail.vue` 项目详情（进度环/概览/成员/里程碑/活动）
-- [ ] `components/common/TaskCard.vue` 可拖拽任务卡片
-- [ ] `components/common/TaskDialog.vue` 任务创建/编辑表单
-- [ ] `components/common/PriorityTag.vue` 优先级标签
-- [ ] `components/common/StatusTag.vue` 状态标签
-- [ ] `stores/project.js` 项目状态 Store
+- [x] `pages/dashboard/Index.vue` 仪表盘（统计卡片/我的任务/项目/活动流）
+- [x] `pages/project/List.vue` 项目列表（卡片网格/搜索/状态筛选/创建弹窗）
+- [x] `pages/project/Detail.vue` 项目详情（进度环/概览/成员/里程碑/活动）
+- [x] `components/common/TaskCard.vue` 可拖拽任务卡片
+- [x] `components/common/TaskDialog.vue` 任务创建/编辑表单
+- [x] `components/common/PriorityTag.vue` 优先级标签
+- [x] `components/common/StatusTag.vue` 状态标签
+- [x] `stores/project.js` 项目状态 Store
+- [x] README.md 团队信息维护
 
-#### 万晶宇 — 甘特图 + 看板 + 任务列表 + 图表组件
-- [ ] `pages/gantt/Index.vue` 甘特图（ECharts 时间线/日周月视图切换/依赖连线）
-- [ ] `pages/task/Board.vue` 看板（列拖拽/任务卡片/抽屉详情/WIP限制）
-- [ ] `pages/task/List.vue` 任务列表（表格/多选筛选/排序/批量操作）
-- [ ] `components/charts/` 图表组件（甘特图/燃尽图/进度环/统计图）
-- [ ] `stores/task.js` 任务状态 Store
-- [ ] `stores/board.js` 看板状态 Store
+> 产出：完成 Dashboard 仪表盘页面、Project 列表/详情页面、4 个公共组件、项目 Store，覆盖页面骨架与 mock 数据交互。
 
-#### 胡博涵 — Sprint + Report 页面 + 部署与测试
-- [ ] `pages/sprint/Index.vue` 冲刺管理（活跃冲刺/燃尽图弹窗/启动完成）
-- [ ] `pages/report/Index.vue` 报表（生成表单/异步状态/历史下载）
+#### 万晶宇 — 甘特图 + 看板 + 任务列表 + 图表组件 + 报表/冲刺页
+- [x] `pages/gantt/Index.vue` 甘特图（ECharts 时间线/日周月视图切换/依赖连线，533行重写）
+- [x] `pages/task/Board.vue` 看板（列拖拽/任务卡片/抽屉详情/WIP限制，598行重写）
+- [x] `pages/task/List.vue` 任务列表（表格/多选筛选/排序/批量操作，366行重写）
+- [x] `pages/report/Index.vue` 报表仪表盘（概览/任务统计/工时分析/燃尽图，498行重写）
+- [x] `pages/sprint/Index.vue` 冲刺管理（活跃冲刺/燃尽图集成，27行增量）
+- [x] `components/charts/BaseChart.vue` ECharts 通用包装器（ResizeObserver + 零宽度重试）
+- [x] `components/charts/BurndownChart.vue` 冲刺燃尽图（理想虚线 vs 实际实线）
+- [x] `components/charts/ProgressRing.vue` 环形进度图
+- [x] `components/charts/StatCard.vue` 统计卡片（数字动画入场）
+- [x] `components/charts/TaskDistribution.vue` 任务分布图（饼图/柱状图切换）
+- [x] `components/charts/TrendChart.vue` 多系列趋势折线图
+- [x] `components/charts/index.js` 图表组件统一导出
+- [x] `pages/demo/Charts.vue` 图表组件演示页（241行）
+- [x] `stores/task.js` 任务状态 Store（筛选/分页/排序/mock回退，204行）
+- [x] `stores/board.js` 看板状态 Store（列CRUD/拖拽/乐观更新，200行）
+- [x] `docs/ai.md` AI 使用记录补充（交互场景十~十六）
+
+> 产出：前端开发量最大的成员。完成 6 个图表组件库、甘特图/看板/任务列表三大核心页面重写、报表仪表盘和冲刺管理页实现、2 个 Store，共 19 files, 2582+ 行新增（第二次提交：5 files, 673+ 行）。解决了 ECharts 隐藏容器初始化零宽度、弹窗内容截断、燃尽图纵轴中文溢出等运行时问题。
+
+#### 胡博涵 — Sprint + Report 前端 + 部署
+- [x] README.md 团队信息维护
+- [ ] `pages/sprint/Index.vue` 冲刺管理（已由万晶宇完成燃尽图集成）
+- [ ] `pages/report/Index.vue` 报表（已由万晶宇完成报表仪表盘）
 - [ ] `stores/sprint.js` 冲刺状态 Store
 - [ ] `stores/notification.js` 通知状态 Store
-- [ ] `docker-compose.yml` 五服务编排（Nginx/Django/Celery/MySQL/Redis）
+- [ ] `docker-compose.yml` 部署编排（已由赵嘉诚完成）
 - [ ] Nginx 反向代理配置
 - [ ] 前端测试用例（组件渲染/API Mock/用户交互）
+
+> 备注：原分配的前端 Sprint/Report 页面由万晶宇协作完成，胡博涵主要负责部署与测试相关工作。待补充 Docker/Nginx/测试产出。
 
 ---
 
@@ -150,7 +202,22 @@
 ---
 
 ## 后续计划
-- 每周末召开进度同步会议（线上/线下）
-- 阶段三目标：4 周内完成全部模块编码
-- 阶段四：联调测试 + Bug 修复
-- 阶段五：Docker 部署 + 演示准备 + 答辩材料
+- **阶段三目标**（进行中）：4 周内完成全部模块编码
+  - ✅ 后端 9 个模块全部完成（accounts/projects/tasks/worklogs/kanban/sprints/files/reports/notifications）
+  - ✅ 前端核心页面完成（Dashboard/Project/甘特图/看板/任务列表/报表/冲刺）
+  - ✅ Docker 五服务编排 + 前后端联调启动
+  - ✅ 注册登录全链路跑通 + 仪表盘真实数据对接
+  - ⬜ 通知模块前后端联调
+  - ⬜ 设置页面对接
+  - ⬜ 前端 mock 数据全面替换为真实 API
+- **阶段四**：联调测试 + Bug 修复
+  - 前后端全模块接口联调
+  - 权限控制验证（IsProjectManager / IsProjectMember）
+  - 任务状态流转完整性验证
+  - 文件上传安全校验测试
+  - 报表异步生成端到端测试
+- **阶段五**：Docker 部署 + 演示准备 + 答辩材料
+  - Nginx 反向代理配置
+  - 生产环境部署（关闭 DEBUG、精简依赖）
+  - 演示脚本准备（各模块核心功能演示路径）
+  - 答辩 PPT / 使用说明书

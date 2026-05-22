@@ -131,21 +131,18 @@ const formatDate = (date) => {
 
 const loadProject = async () => {
   try {
-    const response = await projectAPI.get(projectId)
-    project.value = response.data
+    project.value = await projectAPI.detail(projectId)
   } catch (error) {
     ElMessage.error('加载项目信息失败')
-    console.error(error)
   }
 }
 
 const loadTasks = async () => {
   try {
-    const response = await taskAPI.list({ project: projectId })
-    tasks.value = response.data.results || response.data
+    const res = await taskAPI.list({ project_id: projectId })
+    tasks.value = res.results || res
   } catch (error) {
     ElMessage.error('加载任务信息失败')
-    console.error(error)
   }
 }
 

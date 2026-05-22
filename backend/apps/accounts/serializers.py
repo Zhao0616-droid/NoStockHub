@@ -37,6 +37,24 @@ class LoginSerializer(serializers.Serializer):
         return {'user': user}
 
 
+class ChangePasswordSerializer(serializers.Serializer):
+    """修改密码序列化器"""
+    old_password = serializers.CharField(write_only=True, required=True)
+    new_password = serializers.CharField(write_only=True, required=True, min_length=6)
+
+    def validate_old_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError('原密码不正确')
+        return value
+
+    def save(self):
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        return user
+
+
 class UserSerializer(serializers.ModelSerializer):
     """用户信息序列化器"""
     role_name = serializers.CharField(source='role.name', read_only=True)

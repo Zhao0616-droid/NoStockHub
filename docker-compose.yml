@@ -26,6 +26,7 @@ services:
       - "8000:8000"
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings.base
+      - DEBUG=true
       - DB_HOST=db
       - DB_PASSWORD=${DB_PASSWORD:-root}
       - REDIS_URL=redis://redis:6379/0

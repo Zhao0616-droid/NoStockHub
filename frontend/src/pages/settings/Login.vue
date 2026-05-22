@@ -141,7 +141,9 @@ async function handleLogin() {
     
     router.push('/dashboard')
   } catch (error) {
-    errorMessage.value = error.response?.data?.message || '用户名或密码错误'
+    const data = error.response?.data || {}
+    const msg = data.detail || data.non_field_errors?.[0] || data.username?.[0] || data.password?.[0] || error.message || '用户名或密码错误'
+    errorMessage.value = typeof msg === 'string' ? msg : JSON.stringify(msg)
     ElMessage.error(errorMessage.value)
   } finally {
     loading.value = false

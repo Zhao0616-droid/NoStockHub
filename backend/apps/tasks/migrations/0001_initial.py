@@ -93,7 +93,7 @@ class Migration(migrations.Migration):
                     models.DateTimeField(auto_now=True, verbose_name="更新时间"),
                 ),
                 ("title", models.CharField(max_length=200)),
-                ("description", models.TextField(blank=True)),
+                ("description", models.TextField(blank=True, null=True)),
                 (
                     "type",
                     models.CharField(

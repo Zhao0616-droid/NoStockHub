@@ -457,3 +457,81 @@
 - ResizeObserver 增加最大重试次数（如 50 次）后放弃初始化，显示错误占位
 - 为对话框中的图表增加通用的 `@opened` 事件处理模式，统一解决弹窗内图表初始化时机问题
 - 纵轴标题截断问题可抽取为工具函数：根据文本长度、字体大小自动计算 `grid.left`
+
+---
+
+## 19. 交互场景十七：注册登录联调与仪表盘真实数据对接
+
+### 日期
+2026-05-15
+
+### 原始提示词
+"注册成功但是登录失败" / "还是登录不了" / "仪表盘的参与项目、待办任务、我的任务、最近活动都是硬编码的吗？如果是的话清除这些硬编码数据，而是与后端系统管理连接"
+
+### AI 输出摘要
+- **注册登录问题排查与修复**：
+  - 定位 Django 使用 SQLite 而非 MySQL 的问题：`manage.py` 默认 `config.settings.dev` 将数据库覆写为 SQLite。在 `docker-compose.yml` 中为 backend/celery 服务显式设置 `DJANGO_SETTINGS_MODULE=config.settings.base`
+  - 修复 User 模型 UUID 主键类型不匹配：`AbstractUser` 继承但迁移要求 UUIDField，模型未声明 `id` 字段导致 Django 运行时按 AutoField 处理。在 User 模型中显式添加 `id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)`
+  - 修复 `seed_dev` 命令中 `force_insert=True` 和显式 UUID 赋值，避免自增 ID 冲突
+  - 修复前端 `auth.js` Token 提取逻辑：`const token = res.token || res` 兼容后端返回的 `{ user, token: { access, refresh } }` 嵌套格式
+  - 改进 `Login.vue` 错误解析：递归提取 DRF 多层错误格式（`detail` / `non_field_errors` / 字段级错误数组）
+- **仪表盘去除硬编码数据**：
+  - 后端在 `projects/views.py` 新增 `dashboard` 函数视图（`GET /api/dashboard/`），聚合真实数据库数据
+  - 前端 `dashboard/Index.vue` 完全重写：`onMounted` 调用 `dashboardAPI.summary()` 获取真实数据
+- **任务模型与迁移对齐修复**：修复 `tasks/migrations/0001_initial.py` 中 `description` 缺少 `null=True`；Task 模型补充 `order` 字段；生成并应用 accounts/tasks/worklogs 缺失迁移
+- **其他修复**：Project 进度聚合、TaskCreateSerializer 返回 `id`、项目创建空日期转 `null`、Folder 图标导入
+
+### 可能存在的问题
+- Dashboard 中任务点击暂跳项目详情（暂无任务详情路由）
+- 开发模式快速登录使用 mock token，与真实后端不兼容
+
+### 迭代优化
+- 增加任务详情路由；Dashboard 活动类型扩展；日期选择器清空返回 null
+
+---
+
+## 20. 交互场景十八：通知创建函数与 tasks 模块对接
+
+### 日期
+2026-05-22
+
+### 原始提示词
+"项目结构不包含 apps/notifications/utils.py，`apps/tasks/views.py` 如何调用 create_notification"
+
+### AI 输出摘要
+- **问题**：`tasks/views.py` 在任务分配、状态变更时需发送通知，需统一创建入口且与 `Notification` 模型字段一致（`notification_type` / `db_column='type'`）
+- **最终方案**（合并后保留）：
+  - `apps/notifications/services.py`：`create_notification(recipient=..., notification_type=..., ...)` 主实现
+  - `apps/notifications/utils.py`：薄封装，保留 `create_notification(user=..., type=..., ...)` 签名供 `tasks` 调用
+  - API 层：`ReadOnlyModelViewSet` + `POST …/read/`、`POST …/read-all/`，列表返回 `unread_count`
+
+### 可能存在的问题
+- Swagger 列表接口 Example Value 与真实 JSON 形状不完全一致（以 Execute 响应为准）
+- `read-all` 使用 `QuerySet.update()` 不更新 `updated_at`
+
+### 迭代优化
+- 通知量大时可改 Celery 异步；复杂场景可用 Django Signals 解耦 View 与通知
+
+---
+
+## 21. 交互场景十九：Django Admin 配置与 init.sql 维护
+
+### 日期
+2026-05-08 ~ 2026-05-22
+
+### 原始提示词
+"完成 Django Admin 配置，修复 init.sql 中 accounts 表字段冲突；notifications 模块与 SQL 同步"
+
+### AI 输出摘要
+- **`accounts/admin.py`**：`RoleAdmin` + 继承 `BaseUserAdmin` 的 `UserAdmin`（fieldsets 分基本信息/权限与角色/权限控制/时间信息）
+- **`notifications/admin.py`**：按 `notification_type` 字段注册列表与筛选
+- **`sql/init.sql`**：移除 `accounts_*`、`notifications_*` 手动建表及 `INSERT INTO accounts_role`；业务表 DDL 保留占位，约定由 Django migrations 管理用户与通知表
+- **`accounts/migrations/0002_align_init_sql_user_schema.py`**：旧 init.sql 库补齐 `is_superuser`/`is_staff` 等与 M2M 中间表
+- **合并冲突**：notifications views 保留 POST 已读 + `unread_count` 方案；accounts admin 保留完整 `BaseUserAdmin`；远程各 app 的基础 `admin.py` 一并纳入
+
+### 可能存在的问题
+- init.sql 与 migrations 并存时，新环境需 `migrate --fake-initial` 或清空 volume 后按文档初始化
+- 其他模块表仍部分由 init.sql 创建，长期应逐步迁移至 Django migrations
+
+### 迭代优化
+- docker-compose 启动前自动 `migrate`；预置角色改用 data migration / fixture

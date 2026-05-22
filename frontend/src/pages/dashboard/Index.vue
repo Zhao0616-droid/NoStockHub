@@ -21,7 +21,7 @@
               <el-checkbox :model-value="t.status === 'done'" @change="toggleDone(t)" />
               <span class="task-title">{{ t.title }}</span>
               <PriorityTag :priority="t.priority" />
-              <span class="task-due">{{ t.due_date }}</span>
+              <span class="task-due">{{ t.due_date || '-' }}</span>
             </div>
           </template>
           <el-empty v-else description="暂无待办任务" />
@@ -46,6 +46,7 @@
       <el-timeline v-if="activities.length">
         <el-timeline-item v-for="a in activities" :key="a.id" :timestamp="a.time" placement="top">
           {{ a.content }}
+          <span class="activity-project">（{{ a.project_name }}）</span>
         </el-timeline-item>
       </el-timeline>
       <el-empty v-else description="暂无活动" />
@@ -56,39 +57,69 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useTaskStore } from '@/stores/task'
-import { useProjectStore } from '@/stores/project'
+import { dashboardAPI } from '@/api'
+import { Folder } from '@element-plus/icons-vue'
 import PriorityTag from '@/components/common/PriorityTag.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
 const taskStore = useTaskStore()
-const projectStore = useProjectStore()
 
 const user = computed(() => auth.user || { username: '...' })
 
 const stats = ref([
-  { label: '参与项目', value: 2 },
-  { label: '待办任务', value: 12 },
-  { label: '进行中冲刺', value: 1 },
-  { label: '完成率', value: '85%' }
+  { label: '参与项目', value: 0 },
+  { label: '待办任务', value: 0 },
+  { label: '进行中冲刺', value: 0 },
+  { label: '完成率', value: '0%' }
 ])
 
-const myTasks = ref([
-  { id: '1', title: '设计数据库ER图', priority: 'high', due_date: '2026-05-07', status: 'in_progress' },
-  { id: '2', title: '编写API接口文档', priority: 'medium', due_date: '2026-05-10', status: 'todo' }
-])
+const myTasks = ref([])
+const recentProjects = ref([])
+const activities = ref([])
+const loading = ref(false)
 
-const recentProjects = computed(() => projectStore.projects.slice(0, 5))
+async function fetchDashboard() {
+  loading.value = true
+  try {
+    const res = await dashboardAPI.summary()
+    stats.value = [
+      { label: '参与项目', value: res.stats.project_count },
+      { label: '待办任务', value: res.stats.pending_task_count },
+      { label: '进行中冲刺', value: res.stats.active_sprint_count },
+      { label: '完成率', value: res.stats.completion_rate + '%' }
+    ]
+    myTasks.value = res.my_tasks
+    recentProjects.value = res.recent_projects
+    activities.value = res.activities
+  } catch {
+    ElMessage.warning('加载仪表盘数据失败')
+  } finally {
+    loading.value = false
+  }
+}
 
-const activities = ref([
-  { id: '1', content: '张三 将任务「设计ER图」标记为已完成', time: '10分钟前' },
-  { id: '2', content: '李四 创建了新任务「API开发」', time: '1小时前' }
-])
+function goTask(task) {
+  if (task.project_id) {
+    router.push(`/projects/${task.project_id}`)
+  }
+}
 
-function goTask(task) { router.push(`/tasks/${task.id}`) }
-function toggleDone(task) { taskStore.updateStatus(task.id, task.status === 'done' ? 'in_progress' : 'done') }
+function toggleDone(task) {
+  const newStatus = task.status === 'done' ? 'in_progress' : 'done'
+  taskStore.updateStatus(task.id, newStatus).then(() => {
+    task.status = newStatus
+    if (newStatus === 'done') {
+      myTasks.value = myTasks.value.filter(t => t.id !== task.id)
+      stats.value[1].value = Math.max(0, stats.value[1].value - 1)
+    }
+  })
+}
+
+onMounted(fetchDashboard)
 </script>
 
 <style scoped lang="scss">
@@ -107,4 +138,5 @@ function toggleDone(task) { taskStore.updateStatus(task.id, task.status === 'don
   display: flex; align-items: center; gap: 8px; padding: 8px 0; cursor: pointer;
   &:hover { background: #f5f7fa; }
 }
+.activity-project { font-size: 12px; color: #909399; }
 </style>

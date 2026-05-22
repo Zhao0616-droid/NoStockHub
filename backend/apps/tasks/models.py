@@ -34,6 +34,7 @@ class Task(TimestampedModel):
     start_date = models.DateField(null=True, blank=True, verbose_name='开始日期')
     due_date = models.DateField(null=True, blank=True, verbose_name='截止日期')
     
+    order = models.IntegerField(default=0, verbose_name='排序')
     estimated_hours = models.DecimalField(max_digits=8, decimal_places=2, default=0, verbose_name='预估工时')
     actual_hours = models.DecimalField(max_digits=8, decimal_places=2, default=0, verbose_name='实际工时')
     progress = models.IntegerField(default=0, verbose_name='进度(%)')
