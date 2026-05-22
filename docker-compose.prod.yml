@@ -1,0 +1,93 @@
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME:-project_platform}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: always
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120"
+    volumes:
+      - media_data:/app/media
+      - static_data:/app/staticfiles
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.prod
+      - DEBUG=false
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME:-project_platform}
+      - DB_USER=root
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
+      - ALLOWED_HOSTS=${DOMAIN},localhost,127.0.0.1
+      - CORS_ORIGINS=https://${DOMAIN},http://${DOMAIN}
+      - CORS_ALLOW_ALL=false
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A tasks worker -l info
+    volumes:
+      - media_data:/app/media
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.prod
+      - DEBUG=false
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME:-project_platform}
+      - DB_USER=root
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    ports:
+      - "80:80"
+    restart: always
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
+  media_data:
+  static_data:
