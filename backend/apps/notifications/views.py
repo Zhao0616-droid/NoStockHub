@@ -29,14 +29,14 @@ class NotificationViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['patch'])
+    @action(detail=True, methods=['patch', 'post'])
     def read(self, request, pk=None):
         notification = self.get_object()
         notification.is_read = True
         notification.save(update_fields=['is_read'])
         return Response(NotificationSerializer(notification).data)
 
-    @action(detail=False, methods=['patch'], url_path='read-all')
+    @action(detail=False, methods=['patch', 'post'], url_path='read-all')
     def read_all(self, request):
         count = self.get_queryset().filter(is_read=False).update(is_read=True)
         return Response({'detail': f'{count} notifications marked as read.'})

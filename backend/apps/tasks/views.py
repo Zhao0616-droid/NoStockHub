@@ -92,24 +92,27 @@ class TaskViewSet(viewsets.ModelViewSet):
             
         return Response(TaskDetailSerializer(task).data)
 
-    @action(detail=True, methods=['get', 'post'])
-    def dependencies(self, request, pk=None):
+    @action(detail=True, methods=['get', 'post', 'delete'], url_path='dependencies(?:/(?P<dep_id>[^/.]+))?')
+    def dependencies(self, request, pk=None, dep_id=None):
         task = self.get_object()
         if request.method == 'GET':
-            # 获取当前任务作为前驱的依赖
             deps = TaskDependency.objects.filter(predecessor=task)
             serializer = TaskDependencySerializer(deps, many=True)
             return Response(serializer.data)
-        
-        elif request.method == 'POST':
+
+        if request.method == 'DELETE':
+            if not dep_id:
+                return Response({"error": "dep_id required"}, status=status.HTTP_400_BAD_REQUEST)
+            dep = get_object_or_404(TaskDependency, id=dep_id, predecessor=task)
+            dep.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        if request.method == 'POST':
             successor_id = request.data.get('successor_id')
             if not successor_id:
                 return Response({"error": "successor_id required"}, status=status.HTTP_400_BAD_REQUEST)
-            
-            # 循环依赖检测 (简化版：防止自依赖)
             if successor_id == str(task.id):
                  return Response({"error": "不能依赖自身"}, status=status.HTTP_400_BAD_REQUEST)
-                 
             dep, created = TaskDependency.objects.get_or_create(
                 predecessor=task,
                 successor_id=successor_id,

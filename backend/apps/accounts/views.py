@@ -1,8 +1,9 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from .serializers import RegisterSerializer, LoginSerializer, UserSerializer
+from .serializers import RegisterSerializer, LoginSerializer, UserSerializer, ChangePasswordSerializer
 
 
 class RegisterView(generics.CreateAPIView):
@@ -50,3 +51,34 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class ChangePasswordView(APIView):
+    """修改密码"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({'detail': '密码修改成功'})
+
+
+class EnableTwoFactorView(APIView):
+    """启用双因素认证"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        request.user.two_factor_enabled = True
+        request.user.save(update_fields=['two_factor_enabled'])
+        return Response({'detail': '双因素认证已启用', 'two_factor_enabled': True})
+
+
+class DisableTwoFactorView(APIView):
+    """禁用双因素认证"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        request.user.two_factor_enabled = False
+        request.user.save(update_fields=['two_factor_enabled'])
+        return Response({'detail': '双因素认证已禁用', 'two_factor_enabled': False})

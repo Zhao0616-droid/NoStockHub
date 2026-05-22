@@ -5,36 +5,42 @@
       <el-button type="primary" @click="showCreate = true">+ 新建冲刺</el-button>
     </div>
 
-    <!-- 进行中冲刺 -->
-    <div v-if="activeSprint" class="active-sprint">
-      <el-card>
-        <template #header>
-          <div class="sprint-header">
-            <span>{{ activeSprint.name }} (进行中)</span>
-            <el-tag type="warning">{{ activeSprint.status }}</el-tag>
+    <div v-loading="loading">
+      <!-- 进行中冲刺 -->
+      <div v-if="activeSprint" class="active-sprint">
+        <el-card>
+          <template #header>
+            <div class="sprint-header">
+              <span>{{ activeSprint.name }} (进行中)</span>
+              <el-tag type="warning">{{ activeSprint.status }}</el-tag>
+            </div>
+          </template>
+          <p class="sprint-goal">目标: {{ activeSprint.goal || '暂无' }}</p>
+          <p class="sprint-date">{{ activeSprint.start_date }} ~ {{ activeSprint.end_date }}</p>
+          <el-progress :percentage="activeSprint.progress || 0" />
+          <div class="sprint-tasks">
+            <el-tag v-for="t in sprintTasks" :key="t.id" closable style="margin:4px" @close="removeTask(t.id)">{{ t.title }}</el-tag>
+            <el-empty v-if="!sprintTasks.length" description="暂无任务" :image-size="40" />
           </div>
-        </template>
-        <p class="sprint-goal">目标: {{ activeSprint.goal }}</p>
-        <p class="sprint-date">{{ activeSprint.start_date }} ~ {{ activeSprint.end_date }}</p>
-        <el-progress :percentage="activeSprint.progress || 0" />
-        <div class="sprint-tasks">
-          <el-tag v-for="t in activeSprint.tasks" :key="t.id" closable style="margin:4px">{{ t.title }}</el-tag>
-        </div>
-        <div class="sprint-actions">
-          <el-button @click="showBurndown = true">查看燃尽图</el-button>
-          <el-button type="warning" @click="completeSprint">完成冲刺</el-button>
-        </div>
-      </el-card>
-    </div>
-
-    <!-- 规划中的冲刺 -->
-    <el-card v-for="s in plannedSprints" :key="s.id" class="planned-sprint">
-      <div class="sprint-header">
-        <span>{{ s.name }} (规划中)</span>
-        <el-button size="small" type="primary" @click="startSprint(s.id)">启动冲刺</el-button>
+          <div class="sprint-actions">
+            <el-button @click="openBurndown(activeSprint.id)">查看燃尽图</el-button>
+            <el-button type="warning" @click="handleComplete">完成冲刺</el-button>
+          </div>
+        </el-card>
       </div>
-      <p>{{ s.start_date }} ~ {{ s.end_date }}</p>
-    </el-card>
+
+      <!-- 规划中的冲刺 -->
+      <el-card v-for="s in plannedSprints" :key="s.id" class="planned-sprint">
+        <div class="sprint-header">
+          <span>{{ s.name }} ({{ s.status === 'planning' ? '规划中' : '已完成' }})</span>
+          <el-button v-if="s.status === 'planning'" size="small" type="primary" @click="handleStart(s.id)">启动冲刺</el-button>
+        </div>
+        <p>{{ s.start_date }} ~ {{ s.end_date }}</p>
+        <p v-if="s.goal" class="sprint-goal">{{ s.goal }}</p>
+      </el-card>
+
+      <el-empty v-if="!loading && !activeSprint && !plannedSprints.length" description="暂无冲刺" />
+    </div>
 
     <!-- 燃尽图对话框 -->
     <el-dialog v-model="showBurndown" title="燃尽图" width="720px" @opened="onBurndownOpened">
@@ -47,13 +53,13 @@
     </el-dialog>
 
     <!-- 创建冲刺对话框 -->
-    <el-dialog v-model="showCreate" title="新建冲刺" width="480px">
-      <el-form :model="form" label-position="top">
-        <el-form-item label="冲刺名称" required>
-          <el-input v-model="form.name" />
+    <el-dialog v-model="showCreate" title="新建冲刺" width="480px" @closed="resetForm">
+      <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
+        <el-form-item label="冲刺名称" prop="name">
+          <el-input v-model="form.name" placeholder="请输入冲刺名称" />
         </el-form-item>
         <el-form-item label="冲刺目标">
-          <el-input v-model="form.goal" type="textarea" />
+          <el-input v-model="form.goal" type="textarea" :rows="2" placeholder="冲刺目标（选填）" />
         </el-form-item>
         <el-row :gutter="12">
           <el-col :span="12"><el-form-item label="开始日期"><el-date-picker v-model="form.start_date" style="width:100%" /></el-form-item></el-col>
@@ -62,35 +68,137 @@
       </el-form>
       <template #footer>
         <el-button @click="showCreate = false">取消</el-button>
-        <el-button type="primary" @click="createSprint">创建</el-button>
+        <el-button type="primary" :loading="creating" @click="handleCreate">创建</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { sprintAPI } from '@/api'
 import { BurndownChart } from '@/components/charts'
 
+const route = useRoute()
+const projectId = computed(() => route.params.id)
+
+const loading = ref(false)
+const creating = ref(false)
 const showCreate = ref(false)
 const showBurndown = ref(false)
+const formRef = ref(null)
+
+const sprints = ref([])
+const sprintTasks = ref([])
+
 const form = ref({ name: '', goal: '', start_date: '', end_date: '' })
+const rules = {
+  name: [{ required: true, message: '请输入冲刺名称', trigger: 'blur' }]
+}
 
-const activeSprint = ref({
-  id: 's1', name: 'Sprint 1', goal: '完成用户认证与项目管理模块', status: 'active',
-  start_date: '2026-05-01', end_date: '2026-05-14', progress: 60,
-  tasks: [{ id: 't1', title: '设计ER图' }, { id: 't2', title: '编写API' }, { id: 't3', title: '代码审查' }]
-})
+const activeSprint = computed(() => sprints.value.find(s => s.status === 'active'))
+const plannedSprints = computed(() => sprints.value.filter(s => s.status !== 'active'))
 
-const plannedSprints = ref([
-  { id: 's2', name: 'Sprint 2', goal: '完成核心功能', start_date: '2026-05-15', end_date: '2026-05-28', status: 'planning' }
-])
+// --- Burndown ---
+const burndownDates = ref([])
+const burndownIdeal = ref([])
+const burndownActual = ref([])
 
-// --------------- 燃尽图数据 ---------------
-const burndownDates = ['5/1','5/2','5/3','5/4','5/5','5/6','5/7','5/8','5/9','5/10','5/11','5/12','5/13','5/14']
-const burndownIdeal = [20, 18.5, 17, 15.5, 14, 12.5, 11, 9.5, 8, 6.5, 5, 3.5, 2, 0]
-const burndownActual = [20, 19, 18, 16, 15, 14, 13, 11, 10, 9, 8, 6, 5, 3]
+function fmtDate(d) {
+  if (!d) return null
+  return new Date(d).toISOString().slice(0, 10)
+}
+
+async function fetchSprints() {
+  loading.value = true
+  try {
+    const res = await sprintAPI.list({ project_id: projectId.value })
+    sprints.value = res.results || res
+    if (activeSprint.value) {
+      await fetchSprintTasks(activeSprint.value.id)
+    }
+  } catch {
+    ElMessage.warning('加载冲刺数据失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function fetchSprintTasks(sprintId) {
+  try {
+    const res = await sprintAPI.listTasks(sprintId)
+    // The backend returns a list directly, or via the manage_tasks endpoint
+    sprintTasks.value = Array.isArray(res) ? res : (res.results || [])
+  } catch { /* ignore */ }
+}
+
+async function handleCreate() {
+  const valid = await formRef.value?.validate().catch(() => false)
+  if (!valid) return
+  creating.value = true
+  try {
+    await sprintAPI.create({
+      name: form.value.name,
+      goal: form.value.goal,
+      start_date: fmtDate(form.value.start_date),
+      end_date: fmtDate(form.value.end_date),
+      project_id: projectId.value,
+    })
+    ElMessage.success('冲刺创建成功')
+    showCreate.value = false
+    fetchSprints()
+  } catch (e) {
+    const data = e.response?.data || {}
+    ElMessage.error(data.detail || data.name?.[0] || '创建失败')
+  } finally {
+    creating.value = false
+  }
+}
+
+async function handleStart(id) {
+  try {
+    await sprintAPI.start(id)
+    ElMessage.success('冲刺已启动')
+    fetchSprints()
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '启动失败')
+  }
+}
+
+async function handleComplete() {
+  if (!activeSprint.value) return
+  try {
+    await sprintAPI.complete(activeSprint.value.id)
+    ElMessage.success('冲刺已完成')
+    fetchSprints()
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '完成失败')
+  }
+}
+
+async function removeTask(taskId) {
+  if (!activeSprint.value) return
+  try {
+    await sprintAPI.removeTask(activeSprint.value.id, taskId)
+    sprintTasks.value = sprintTasks.value.filter(t => t.id !== taskId)
+  } catch {
+    ElMessage.warning('移除任务失败')
+  }
+}
+
+async function openBurndown(sprintId) {
+  try {
+    const res = await sprintAPI.burndown(sprintId)
+    burndownDates.value = (res.ideal_line || []).map(p => p.date)
+    burndownIdeal.value = (res.ideal_line || []).map(p => p.remaining)
+    burndownActual.value = (res.actual_line || []).map(p => p.remaining)
+  } catch {
+    ElMessage.warning('加载燃尽图失败')
+  }
+  showBurndown.value = true
+}
 
 function onBurndownOpened() {
   nextTick(() => {
@@ -98,9 +206,11 @@ function onBurndownOpened() {
   })
 }
 
-function createSprint() { ElMessage.success('冲刺创建成功'); showCreate.value = false }
-function startSprint() { ElMessage.success('冲刺已启动') }
-function completeSprint() { ElMessage.success('冲刺已完成') }
+function resetForm() {
+  form.value = { name: '', goal: '', start_date: '', end_date: '' }
+}
+
+onMounted(fetchSprints)
 </script>
 
 <style scoped lang="scss">
