@@ -464,3 +464,29 @@
 - 后续可增加任务详情路由，使 dashboard 中"我的任务"点击直接进入任务详情
 - Dashboard 活动数据可增加更多事件类型（成员加入/离开、里程碑完成、评论等），当前仅覆盖任务创建和完成
 - 前端项目创建表单可考虑 el-date-picker 清空时返回 null 而非空字符串，从组件层面根治问题
+
+---
+
+## 19. 交互场景十九：解决通知工具函数缺失问题
+
+### 日期
+2026-05-22
+
+### 原始提示词
+“项目结构不包含apps/notifications/utils.py这个文件，在不增加文件的条件下，如何解决apps/tasks/view.py文件中的问题”
+
+### AI 输出摘要
+- **问题诊断**：`apps/tasks/views.py` 尝试导入 `apps.notifications.utils.create_notification`，但该文件不存在。根据经验记忆，应在不新增文件的前提下通过重构现有代码解决。
+- **解决方案设计**：将 [create_notification](file://d:\VScode\NoStockHub\backend\apps\notifications\utils.py#L3-L11) 逻辑迁移至 `apps/notifications/models.py` 中。这种“胖模型”模式符合 Django 开发规范，且便于跨模块调用而不产生循环依赖。
+- **具体实施步骤**：
+  - 在 `backend/apps/notifications/models.py` 末尾定义 `create_notification(user, type, title, content='', ...)` 辅助函数，直接操作 [Notification](file://d:\VScode\NoStockHub\backend\apps\notifications\models.py#L6-L39) 模型。
+  - 修改 `backend/apps/tasks/views.py` 的导入语句为 `from apps.notifications.models import create_notification`。
+- **优势分析**：避免了创建冗余的 [utils.py](file://d:\VScode\NoStockHub\backend\apps\notifications\utils.py) 文件；保持了业务逻辑（通知发送）与数据模型的高度关联；符合项目中已有的 `core/models.py` 基础类复用风格。
+
+### 可能存在的问题
+- 随着功能增多，[models.py](file://d:\VScode\NoStockHub\backend\apps\notifications\models.py) 可能会变得臃肿，包含过多非模型定义的逻辑。
+- 如果未来需要实现复杂的异步通知队列或邮件集成，简单的同步创建函数可能需要进一步优化以支持 Celery 任务。
+
+### 迭代优化
+- 后续若通知逻辑复杂化，可考虑使用 Django Signals（信号量）机制，在任务状态变更时自动触发通知，进一步解耦 View 层与 Notification 模块。
+- 建议在 `apps/notifications/__init__.py` 中导出该函数，使其他模块可以通过 `from apps.notifications import create_notification` 统一入口调用。
