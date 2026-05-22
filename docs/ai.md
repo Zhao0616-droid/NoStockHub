@@ -425,3 +425,42 @@
 - ResizeObserver 增加最大重试次数（如 50 次）后放弃初始化，显示错误占位
 - 为对话框中的图表增加通用的 `@opened` 事件处理模式，统一解决弹窗内图表初始化时机问题
 - 纵轴标题截断问题可抽取为工具函数：根据文本长度、字体大小自动计算 `grid.left`
+
+---
+
+## 18. 交互场景十七：注册登录联调与仪表盘真实数据对接
+
+### 日期
+2026-05-15
+
+### 原始提示词
+"注册成功但是登录失败" / "还是登录不了" / "仪表盘的参与项目、待办任务、我的任务、最近活动都是硬编码的吗？如果是的话清除这些硬编码数据，而是与后端系统管理连接"
+
+### AI 输出摘要
+- **注册登录问题排查与修复**：
+  - 定位 Django 使用 SQLite 而非 MySQL 的问题：`manage.py` 默认 `config.settings.dev` 将数据库覆写为 SQLite。在 `docker-compose.yml` 中为 backend/celery 服务显式设置 `DJANGO_SETTINGS_MODULE=config.settings.base`
+  - 修复 User 模型 UUID 主键类型不匹配：`AbstractUser` 继承但迁移要求 UUIDField，模型未声明 `id` 字段导致 Django 运行时按 AutoField 处理。在 User 模型中显式添加 `id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)`
+  - 修复 `seed_dev` 命令中 `force_insert=True` 和显式 UUID 赋值，避免自增 ID 冲突
+  - 修复前端 `auth.js` Token 提取逻辑：`const token = res.token || res` 兼容后端返回的 `{ user, token: { access, refresh } }` 嵌套格式
+  - 改进 `Login.vue` 错误解析：递归提取 DRF 多层错误格式（`detail` / `non_field_errors` / 字段级错误数组）
+- **仪表盘去除硬编码数据**：
+  - 后端在 `projects/views.py` 新增 `dashboard` 函数视图（`GET /api/dashboard/`），聚合真实数据库数据：按用户权限过滤项目（owner/member/public）、计算统计卡片（项目数/待办任务数/活跃冲刺数/完成率）、我的任务（按 assignee + 未完成过滤前 10 条）、最近项目（前 5 个，含基于任务进度的实时计算）、最近活动（任务创建 + 完成事件，按时间倒序前 15 条）
+  - 前端 `dashboard/Index.vue` 完全重写：移除全部硬编码 mock 数据，`onMounted` 调用 `dashboardAPI.summary()` 获取真实数据，统计卡片/我的任务/最近项目/活动时间线全部动态渲染
+- **任务模型与迁移对齐修复**：
+  - 修复 `tasks/migrations/0001_initial.py` 中 `description` 缺少 `null=True`（模型有但迁移没有，导致 MySQL 严格模式报 `Column 'description' cannot be null`）
+  - 修复 Task 模型缺少 `order` 字段（迁移有但模型没有，导致 `Field 'order' doesn't have a default value`）
+  - 为 accounts/tasks/worklogs 生成并应用缺失的迁移（`makemigrations` + `migrate`），消除 model-migration 不一致警告
+- **Project 模型 computed 字段修复**：`dashboard` 视图使用 `p.progress` 但 Project 模型无此字段（是 SerializerMethodField），改为在视图中通过 Task 聚合计算平均进度
+- **TaskCreateSerializer 修复**：响应缺少 `id` 字段，添加 `'id'` 到 fields 并设为 `read_only_fields`，确保创建任务后前端可获取任务 ID
+- **项目创建 400 修复**：前端 `project/List.vue` 表单发送空字符串 `start_date: ''` / `end_date: ''`，DRF DateField 拒绝空字符串。在 `handleCreate` 中将 falsy 日期值转为 `null` 后再发送
+- **Folder 图标未解析修复**：`dashboard/Index.vue` 和 `project/List.vue` 使用了 `<el-icon><Folder /></el-icon>` 但未导入，添加 `import { Folder } from '@element-plus/icons-vue'`
+
+### 可能存在的问题
+- Dashboard 中 `goTask` 点击后跳转到项目详情页而非任务详情页（前端暂无任务详情路由），暂时可作为快捷入口
+- `DEBUG=true` 仍保留在 docker-compose.yml 中用于开发调试，正式部署前需移除
+- 开发模式快速登录按钮使用 mock token，与真实后端不兼容，点击后 dashboard 会 401
+
+### 迭代优化
+- 后续可增加任务详情路由，使 dashboard 中"我的任务"点击直接进入任务详情
+- Dashboard 活动数据可增加更多事件类型（成员加入/离开、里程碑完成、评论等），当前仅覆盖任务创建和完成
+- 前端项目创建表单可考虑 el-date-picker 清空时返回 null 而非空字符串，从组件层面根治问题
