@@ -74,6 +74,31 @@
             </el-card>
           </el-col>
         </el-row>
+
+        <el-divider />
+
+        <el-row>
+          <el-col :span="24">
+            <el-card class="sub-card">
+              <template #header>
+                <span>最近活动</span>
+              </template>
+              <el-timeline v-if="activities.length">
+                <el-timeline-item
+                  v-for="a in activities"
+                  :key="a.id"
+                  :timestamp="formatDateTime(a.time)"
+                  placement="top"
+                  :color="activityColor(a.type)"
+                >
+                  {{ a.content }}
+                  <span class="activity-user">（{{ a.user }}）</span>
+                </el-timeline-item>
+              </el-timeline>
+              <el-empty v-else description="暂无活动记录" />
+            </el-card>
+          </el-col>
+        </el-row>
       </div>
     </el-card>
   </div>
@@ -90,6 +115,7 @@ const route = useRoute()
 const projectId = route.params.id
 const project = ref(null)
 const tasks = ref([])
+const activities = ref([])
 
 const stats = computed(() => {
   const total = tasks.value.length
@@ -146,9 +172,26 @@ const loadTasks = async () => {
   }
 }
 
+const loadActivities = async () => {
+  try {
+    const res = await projectAPI.activity(projectId)
+    activities.value = res.results || res || []
+  } catch { /* activity is optional */ }
+}
+
+function formatDateTime(d) {
+  if (!d) return ''
+  return new Date(d).toLocaleString('zh-CN', { hour12: false })
+}
+
+function activityColor(type) {
+  return { task_created: '#67C23A', task_updated: '#409EFF', milestone: '#E6A23C' }[type] || '#909399'
+}
+
 onMounted(() => {
   loadProject()
   loadTasks()
+  loadActivities()
 })
 </script>
 
@@ -172,6 +215,11 @@ onMounted(() => {
     .chart-container {
       height: 300px;
     }
+  }
+
+  .activity-user {
+    font-size: 12px;
+    color: #909399;
   }
 }
 </style>

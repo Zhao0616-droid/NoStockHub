@@ -168,6 +168,42 @@ class ProjectViewSet(viewsets.ModelViewSet):
             'milestones': milestones,
         })
 
+    @action(detail=True, methods=['get'], url_path='activity')
+    def activity(self, request, pk=None):
+        from django.apps import apps
+
+        project = self.get_object()
+        activities = []
+
+        try:
+            Task = apps.get_model('tasks', 'Task')
+        except LookupError:
+            Task = None
+
+        if Task is not None:
+            tasks = Task.objects.filter(project=project).order_by('-created_at')[:20]
+            for task in tasks:
+                activities.append({
+                    'id': f'task-{task.id}',
+                    'type': 'task_created' if task.created_at == task.updated_at else 'task_updated',
+                    'content': f'创建了任务「{task.title}」' if task.created_at == task.updated_at else f'更新了任务「{task.title}」',
+                    'time': task.updated_at or task.created_at,
+                    'user': task.assignee.username if task.assignee else (task.reporter.username if hasattr(task, 'reporter') and task.reporter else '系统'),
+                })
+
+        # milestones
+        for ms in project.milestones.order_by('-created_at')[:10]:
+            activities.append({
+                'id': f'milestone-{ms.id}',
+                'type': 'milestone',
+                'content': f'里程碑「{ms.name}」',
+                'time': ms.created_at,
+                'user': '系统',
+            })
+
+        activities.sort(key=lambda x: x['time'], reverse=True)
+        return Response(activities[:30])
+
 
 class ProjectTemplateViewSet(viewsets.ModelViewSet):
     serializer_class = ProjectTemplateSerializer

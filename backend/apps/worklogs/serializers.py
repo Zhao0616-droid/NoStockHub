@@ -1,6 +1,7 @@
 from rest_framework import serializers
-from .models import WorkLog
+from .models import WorkLog, HourlyRate
 from apps.accounts.serializers import UserSerializer
+
 
 class WorkLogSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
@@ -16,3 +17,15 @@ class WorkLogSerializer(serializers.ModelSerializer):
         if value > 24:
             raise serializers.ValidationError("单日工时不能超过24小时")
         return value
+
+
+class HourlyRateSerializer(serializers.ModelSerializer):
+    user_summary = serializers.SerializerMethodField()
+
+    class Meta:
+        model = HourlyRate
+        fields = ['id', 'user', 'user_summary', 'project', 'rate', 'effective_from', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+    def get_user_summary(self, obj):
+        return {'id': str(obj.user_id), 'username': obj.user.username}

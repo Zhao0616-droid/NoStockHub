@@ -87,6 +87,14 @@ export const worklogAPI = {
   summary: (params) => request.get('/worklogs/summary/', { params }),
 }
 
+// 工时费率
+export const rateAPI = {
+  list: (params) => request.get('/worklogs/rates/', { params }),
+  create: (data) => request.post('/worklogs/rates/', data),
+  update: (id, data) => request.put(`/worklogs/rates/${id}/`, data),
+  delete: (id) => request.delete(`/worklogs/rates/${id}/`),
+}
+
 // 通知
 export const notificationAPI = {
   list: (params) => request.get('/notifications/', { params }),

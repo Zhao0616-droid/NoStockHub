@@ -40,10 +40,26 @@
     <el-empty v-if="!store.loading && !store.projects.length" description="暂无项目，点击上方按钮创建" />
 
     <!-- 创建项目对话框 -->
-    <el-dialog v-model="showCreate" title="创建项目" width="520px" @closed="resetForm">
+    <el-dialog v-model="showCreate" title="创建项目" width="520px" @closed="resetForm" @open="loadTemplates">
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
         <el-form-item label="项目名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入项目名称" />
+        </el-form-item>
+        <el-form-item label="从模板创建" v-if="templates.length">
+          <el-select
+            v-model="selectedTemplate"
+            placeholder="选择模板（可选）"
+            clearable
+            style="width:100%"
+            @change="onTemplateChange"
+          >
+            <el-option
+              v-for="t in templates"
+              :key="t.id"
+              :label="t.name"
+              :value="t.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="项目描述" prop="description">
           <el-input v-model="form.description" type="textarea" :rows="3" placeholder="项目描述（选填）" />
@@ -79,6 +95,7 @@
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useProjectStore } from '@/stores/project'
+import { projectAPI } from '@/api'
 import { Folder } from '@element-plus/icons-vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 
@@ -91,6 +108,29 @@ const formRef = ref()
 
 const form = ref({ name: '', description: '', start_date: '', end_date: '', visibility: 'private' })
 const rules = { name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }] }
+
+// --------------- 模板 ---------------
+const templates = ref([])
+const selectedTemplate = ref('')
+
+async function loadTemplates() {
+  if (templates.value.length) return
+  try {
+    const res = await projectAPI.templates()
+    templates.value = res.results || res || []
+  } catch { /* keep empty */ }
+}
+
+function onTemplateChange(templateId) {
+  if (!templateId) return
+  const tpl = templates.value.find(t => t.id === templateId)
+  if (!tpl) return
+  form.value.name = tpl.name || ''
+  form.value.description = tpl.description || ''
+  if (tpl.config) {
+    if (tpl.config.visibility) form.value.visibility = tpl.config.visibility
+  }
+}
 
 function progressColor(v) { return v < 30 ? '#F56C6C' : v < 80 ? '#409EFF' : '#67C23A' }
 
@@ -114,7 +154,10 @@ async function handleCreate() {
   }
 }
 
-function resetForm() { form.value = { name: '', description: '', start_date: '', end_date: '', visibility: 'private' } }
+function resetForm() {
+  form.value = { name: '', description: '', start_date: '', end_date: '', visibility: 'private' }
+  selectedTemplate.value = ''
+}
 
 watch([search, filterStatus], () => {
   store.fetchProjects({ search: search.value, status: filterStatus.value })
