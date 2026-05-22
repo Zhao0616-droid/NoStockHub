@@ -44,8 +44,9 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - REDIS_URL=redis://redis:6379/0
       - ALLOWED_HOSTS=${DOMAIN},localhost,127.0.0.1
-      - CORS_ORIGINS=https://${DOMAIN},http://${DOMAIN}
+      - CORS_ORIGINS=http://${DOMAIN}
       - CORS_ALLOW_ALL=false
+      - ENABLE_SSL=false
     restart: always
     depends_on:
       db:
