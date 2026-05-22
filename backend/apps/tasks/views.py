@@ -23,11 +23,14 @@ class TaskViewSet(viewsets.ModelViewSet):
         project_id = self.request.query_params.get('project_id')
         status_filter = self.request.query_params.get('status')
         assignee_id = self.request.query_params.get('assignee_id')
-        
+        priority_filter = self.request.query_params.get('priority')
+
         if project_id:
             queryset = queryset.filter(project_id=project_id)
         if status_filter:
             queryset = queryset.filter(status=status_filter)
+        if priority_filter:
+            queryset = queryset.filter(priority=priority_filter)
         if assignee_id:
             queryset = queryset.filter(assignee_id=assignee_id)
             

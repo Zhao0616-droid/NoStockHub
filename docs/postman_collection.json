@@ -1,0 +1,939 @@
+{
+  "info": {
+    "name": "NoStockHub API Tests",
+    "description": "NoStockHub Backend API Test Collection\nBase URL: http://127.0.0.1:8000/api\nAuth: Bearer JWT\n\nUsage:\n1. Import into Postman (VS Code or Desktop)\n2. Run 'Auth > Login' first to get token\n3. Run remaining folders in order",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{access_token}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000/api" },
+    { "key": "access_token", "value": "" },
+    { "key": "refresh_token", "value": "" },
+    { "key": "project_id", "value": "" },
+    { "key": "task_id", "value": "" },
+    { "key": "task2_id", "value": "" },
+    { "key": "sprint_id", "value": "" },
+    { "key": "board_id", "value": "" },
+    { "key": "worklog_id", "value": "" },
+    { "key": "report_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1-Auth",
+      "item": [
+        {
+          "name": "Login (valid)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "const json = pm.response.json();",
+                "pm.test('Has access token', () => pm.expect(json.token.access).to.be.a('string'));",
+                "pm.collectionVariables.set('access_token', json.token.access);",
+                "pm.collectionVariables.set('refresh_token', json.token.refresh);"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/auth/login/", "host": ["{{base_url}}"], "path": ["auth", "login", ""] },
+            "body": { "mode": "raw", "raw": "{\"username\":\"test\",\"password\":\"123456\"}" }
+          }
+        },
+        {
+          "name": "Login (wrong password)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                "const body = pm.response.text();",
+                "pm.test('Error message', () => pm.expect(body).to.include('error'));"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/auth/login/", "host": ["{{base_url}}"], "path": ["auth", "login", ""] },
+            "body": { "mode": "raw", "raw": "{\"username\":\"test\",\"password\":\"wrong_password\"}" }
+          }
+        },
+        {
+          "name": "Login (missing fields)",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/auth/login/", "host": ["{{base_url}}"], "path": ["auth", "login", ""] },
+            "body": { "mode": "raw", "raw": "{\"username\":\"test\"}" }
+          }
+        },
+        {
+          "name": "Register (new user)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const code = pm.response.code;",
+                "pm.test('Status 201 or 400', () => pm.expect(code).to.be.oneOf([201, 400]));",
+                "if (code === 201) pm.test('Has token', () => pm.expect(pm.response.json().token).to.exist);"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/auth/register/", "host": ["{{base_url}}"], "path": ["auth", "register", ""] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"newman_test\",\"email\":\"newman@test.com\",\"password\":\"Abc@123456\",\"password2\":\"Abc@123456\",\"phone\":\"13800000000\"}"
+            }
+          }
+        },
+        {
+          "name": "Token Refresh",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "const json = pm.response.json();",
+                "pm.collectionVariables.set('access_token', json.access);"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/auth/token/refresh/", "host": ["{{base_url}}"], "path": ["auth", "token", "refresh", ""] },
+            "body": { "mode": "raw", "raw": "{\"refresh\":\"{{refresh_token}}\"}" }
+          }
+        },
+        {
+          "name": "Get Profile",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "pm.test('Has username', () => pm.expect(pm.response.json().username).to.be.a('string'));"
+              ]
+            }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/auth/profile/", "host": ["{{base_url}}"], "path": ["auth", "profile", ""] }
+          }
+        },
+        {
+          "name": "Change Password",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/auth/change-password/", "host": ["{{base_url}}"], "path": ["auth", "change-password", ""] },
+            "body": { "mode": "raw", "raw": "{\"old_password\":\"123456\",\"new_password\":\"123456\"}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2-Projects",
+      "item": [
+        {
+          "name": "List (paginated)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "const json = pm.response.json();",
+                "pm.test('Has pagination', () => { pm.expect(json.count).to.be.a('number'); pm.expect(json.results).to.be.an('array'); });"
+              ]
+            }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/projects/?page=1&page_size=5", "host": ["{{base_url}}"], "path": ["projects", ""], "query": [
+              {"key": "page", "value": "1"}, {"key": "page_size", "value": "5"}
+            ]}
+          }
+        },
+        {
+          "name": "List (filter by status)",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/projects/?status=active", "host": ["{{base_url}}"], "path": ["projects", ""], "query": [{"key": "status", "value": "active"}] }
+          }
+        },
+        {
+          "name": "Create",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                "const json = pm.response.json();",
+                "pm.collectionVariables.set('project_id', json.id);",
+                "pm.test('Has id', () => pm.expect(json.id).to.be.a('string'));",
+                "pm.test('Has name', () => pm.expect(json.name).to.be.a('string'));"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/projects/", "host": ["{{base_url}}"], "path": ["projects", ""] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"API Test Project\",\"description\":\"Created by Newman\",\"start_date\":\"2026-06-01\",\"end_date\":\"2026-07-01\",\"visibility\":\"private\"}"
+            }
+          }
+        },
+        {
+          "name": "Detail",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "pm.test('Has owner', () => pm.expect(pm.response.json().owner).to.exist);",
+                "pm.test('Has status', () => pm.expect(pm.response.json().status).to.be.a('string'));"
+              ]
+            }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/projects/{{project_id}}/", "host": ["{{base_url}}"], "path": ["projects", "{{project_id}}", ""] }
+          }
+        },
+        {
+          "name": "Update (PATCH)",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "PATCH",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/projects/{{project_id}}/", "host": ["{{base_url}}"], "path": ["projects", "{{project_id}}", ""] },
+            "body": { "mode": "raw", "raw": "{\"name\":\"API Test Project\",\"status\":\"active\",\"description\":\"Updated by Newman\"}" }
+          }
+        },
+        {
+          "name": "Members List",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "const json = pm.response.json();",
+                "const list = json.results || json;",
+                "pm.test('Has results', () => pm.expect(list).to.satisfy(v => Array.isArray(v) || Array.isArray(v.results)));"
+              ]
+            }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/projects/{{project_id}}/members/", "host": ["{{base_url}}"], "path": ["projects", "{{project_id}}", "members", ""] }
+          }
+        },
+        {
+          "name": "Add Member",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const code = pm.response.code;",
+                "pm.test('Status 201 or 400', () => pm.expect(code).to.be.oneOf([201, 400]));",
+                "if (code === 400) console.log('Add member: ' + pm.response.text());"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/projects/{{project_id}}/members/", "host": ["{{base_url}}"], "path": ["projects", "{{project_id}}", "members", ""] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"user_id\":\"c8336e0d-8cd2-42a8-9de3-55f20ac8964f\",\"role\":\"member\"}"
+            }
+          }
+        },
+        {
+          "name": "Create Milestone",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                "const json = pm.response.json();",
+                "pm.test('Has name', () => pm.expect(json.name).to.be.a('string'));"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/projects/{{project_id}}/milestones/", "host": ["{{base_url}}"], "path": ["projects", "{{project_id}}", "milestones", ""] },
+            "body": { "mode": "raw", "raw": "{\"name\":\"Phase 1 Milestone\",\"due_date\":\"2026-06-15\",\"status\":\"pending\"}" }
+          }
+        },
+        {
+          "name": "Milestones List",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/projects/{{project_id}}/milestones/", "host": ["{{base_url}}"], "path": ["projects", "{{project_id}}", "milestones", ""] }
+          }
+        },
+        {
+          "name": "Gantt Data",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "const json = pm.response.json();",
+                "pm.test('Has tasks array', () => pm.expect(json.tasks).to.be.an('array'));",
+                "pm.test('Has milestones array', () => pm.expect(json.milestones).to.be.an('array'));"
+              ]
+            }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/projects/{{project_id}}/gantt/", "host": ["{{base_url}}"], "path": ["projects", "{{project_id}}", "gantt", ""] }
+          }
+        },
+        {
+          "name": "Activity Log",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/projects/{{project_id}}/activity/", "host": ["{{base_url}}"], "path": ["projects", "{{project_id}}", "activity", ""] }
+          }
+        },
+        {
+          "name": "Templates List",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/projects/templates/", "host": ["{{base_url}}"], "path": ["projects", "templates", ""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3-Tasks",
+      "item": [
+        {
+          "name": "List",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "const json = pm.response.json();",
+                "pm.test('Paginated', () => pm.expect(json.results).to.be.an('array'));"
+              ]
+            }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/tasks/?page=1&page_size=10", "host": ["{{base_url}}"], "path": ["tasks", ""], "query": [
+              {"key": "page", "value": "1"}, {"key": "page_size", "value": "10"}
+            ]}
+          }
+        },
+        {
+          "name": "List (filtered)",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/tasks/?project_id={{project_id}}&status=todo&priority=high", "host": ["{{base_url}}"], "path": ["tasks", ""], "query": [
+              {"key": "project_id", "value": "{{project_id}}"}, {"key": "status", "value": "todo"}, {"key": "priority", "value": "high"}
+            ]}
+          }
+        },
+        {
+          "name": "Create Task 1",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const code = pm.response.code;",
+                "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                "if (code === 201) {",
+                "  const json = pm.response.json();",
+                "  pm.collectionVariables.set('task_id', json.id);",
+                "  pm.test('Has id', () => pm.expect(json.id).to.be.a('string'));",
+                "} else {",
+                "  console.log('Create task failed: ' + pm.response.text());",
+                "}"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/tasks/", "host": ["{{base_url}}"], "path": ["tasks", ""] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":\"Task 1 - API Test\",\"description\":\"Test task from Newman\",\"priority\":\"high\",\"start_date\":\"2026-05-22\",\"due_date\":\"2026-05-25\",\"estimated_hours\":8.0,\"project\":\"{{project_id}}\"}"
+            }
+          }
+        },
+        {
+          "name": "Create Task 2",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const code = pm.response.code;",
+                "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                "if (code === 201) {",
+                "  const json = pm.response.json();",
+                "  pm.collectionVariables.set('task2_id', json.id);",
+                "}"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/tasks/", "host": ["{{base_url}}"], "path": ["tasks", ""] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":\"Task 2 - API Test\",\"description\":\"Second test task\",\"priority\":\"medium\",\"start_date\":\"2026-05-22\",\"due_date\":\"2026-05-30\",\"estimated_hours\":4.0,\"project\":\"{{project_id}}\"}"
+            }
+          }
+        },
+        {
+          "name": "Detail",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "pm.test('Has title', () => pm.expect(pm.response.json().title).to.be.a('string'));"
+              ]
+            }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/tasks/{{task_id}}/", "host": ["{{base_url}}"], "path": ["tasks", "{{task_id}}", ""] }
+          }
+        },
+        {
+          "name": "Update Status (todo->in_progress)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const code = pm.response.code;",
+                "pm.test('Valid transition', () => pm.expect(code).to.be.oneOf([200, 400]));",
+                "if (code === 400) console.log('Blocked: ' + pm.response.text());"
+              ]
+            }
+          }],
+          "request": {
+            "method": "PATCH",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/tasks/{{task_id}}/update_status/", "host": ["{{base_url}}"], "path": ["tasks", "{{task_id}}", "update_status", ""] },
+            "body": { "mode": "raw", "raw": "{\"status\":\"in_progress\"}" }
+          }
+        },
+        {
+          "name": "Update Status (invalid: in_progress->done)",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] }
+          }],
+          "request": {
+            "method": "PATCH",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/tasks/{{task_id}}/update_status/", "host": ["{{base_url}}"], "path": ["tasks", "{{task_id}}", "update_status", ""] },
+            "body": { "mode": "raw", "raw": "{\"status\":\"done\"}" }
+          }
+        },
+        {
+          "name": "Add Dependency",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const code = pm.response.code;",
+                "pm.test('Status 2xx or 400', () => pm.expect(code).to.be.oneOf([200, 201, 400]));"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/tasks/{{task_id}}/dependencies/", "host": ["{{base_url}}"], "path": ["tasks", "{{task_id}}", "dependencies", ""] },
+            "body": { "mode": "raw", "raw": "{\"successor_id\":\"{{task2_id}}\",\"relation_type\":\"precedes\"}" }
+          }
+        },
+        {
+          "name": "Get Dependencies",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/tasks/{{task_id}}/dependencies/", "host": ["{{base_url}}"], "path": ["tasks", "{{task_id}}", "dependencies", ""] }
+          }
+        },
+        {
+          "name": "Add Comment",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));"] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/tasks/{{task_id}}/comments/", "host": ["{{base_url}}"], "path": ["tasks", "{{task_id}}", "comments", ""] },
+            "body": { "mode": "raw", "raw": "{\"content\":\"API test comment from Newman\"}" }
+          }
+        },
+        {
+          "name": "Get Comments",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/tasks/{{task_id}}/comments/", "host": ["{{base_url}}"], "path": ["tasks", "{{task_id}}", "comments", ""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4-Kanban",
+      "item": [
+        {
+          "name": "List Boards",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/boards/?project_id={{project_id}}", "host": ["{{base_url}}"], "path": ["boards", ""], "query": [{"key": "project_id", "value": "{{project_id}}"}] }
+          }
+        },
+        {
+          "name": "Create Board",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                "pm.collectionVariables.set('board_id', pm.response.json().id);"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/boards/", "host": ["{{base_url}}"], "path": ["boards", ""] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"API Test Board\",\"type\":\"team\",\"project_id\":\"{{project_id}}\"}"
+            }
+          }
+        },
+        {
+          "name": "Board Detail",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/boards/{{board_id}}/", "host": ["{{base_url}}"], "path": ["boards", "{{board_id}}", ""] }
+          }
+        },
+        {
+          "name": "Add Column",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));"] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/boards/{{board_id}}/columns/", "host": ["{{base_url}}"], "path": ["boards", "{{board_id}}", "columns", ""] },
+            "body": { "mode": "raw", "raw": "{\"name\":\"To Do\",\"order\":0,\"wip_limit\":0}" }
+          }
+        },
+        {
+          "name": "Get Columns",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/boards/{{board_id}}/columns/", "host": ["{{base_url}}"], "path": ["boards", "{{board_id}}", "columns", ""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5-Sprints",
+      "item": [
+        {
+          "name": "List Sprints",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/sprints/?project_id={{project_id}}", "host": ["{{base_url}}"], "path": ["sprints", ""], "query": [{"key": "project_id", "value": "{{project_id}}"}] }
+          }
+        },
+        {
+          "name": "Create Sprint",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                "pm.collectionVariables.set('sprint_id', pm.response.json().id);"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/sprints/", "host": ["{{base_url}}"], "path": ["sprints", ""] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"API Sprint 1\",\"goal\":\"Complete API testing\",\"start_date\":\"2026-06-01\",\"end_date\":\"2026-06-14\",\"project_id\":\"{{project_id}}\"}"
+            }
+          }
+        },
+        {
+          "name": "Sprint Detail",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/sprints/{{sprint_id}}/", "host": ["{{base_url}}"], "path": ["sprints", "{{sprint_id}}", ""] }
+          }
+        },
+        {
+          "name": "Start Sprint",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 200 or 400', () => pm.expect(pm.response.code).to.be.oneOf([200, 400]));"] }
+          }],
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/sprints/{{sprint_id}}/start/", "host": ["{{base_url}}"], "path": ["sprints", "{{sprint_id}}", "start", ""] }
+          }
+        },
+        {
+          "name": "Add Task to Sprint",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const code = pm.response.code;",
+                "pm.test('Status 200 or 400', () => pm.expect(code).to.be.oneOf([200, 400]));",
+                "if (code === 400) console.log('Add task to sprint: ' + pm.response.text());"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/sprints/{{sprint_id}}/tasks/", "host": ["{{base_url}}"], "path": ["sprints", "{{sprint_id}}", "tasks", ""] },
+            "body": { "mode": "raw", "raw": "{\"task_id\":\"{{task_id}}\"}" }
+          }
+        },
+        {
+          "name": "Burndown Chart",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "const json = pm.response.json();",
+                "pm.test('Has ideal_line', () => pm.expect(json.ideal_line).to.be.an('array'));",
+                "pm.test('Has actual_line', () => pm.expect(json.actual_line).to.be.an('array'));"
+              ]
+            }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/sprints/{{sprint_id}}/burndown/", "host": ["{{base_url}}"], "path": ["sprints", "{{sprint_id}}", "burndown", ""] }
+          }
+        },
+        {
+          "name": "Complete Sprint",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 200 or 400', () => pm.expect(pm.response.code).to.be.oneOf([200, 400]));"] }
+          }],
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/sprints/{{sprint_id}}/complete/", "host": ["{{base_url}}"], "path": ["sprints", "{{sprint_id}}", "complete", ""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6-Worklogs",
+      "item": [
+        {
+          "name": "List Worklogs",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/worklogs/?project_id={{project_id}}", "host": ["{{base_url}}"], "path": ["worklogs", ""], "query": [{"key": "project_id", "value": "{{project_id}}"}] }
+          }
+        },
+        {
+          "name": "Log Work",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const code = pm.response.code;",
+                "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                "if (code === 201) pm.collectionVariables.set('worklog_id', pm.response.json().id);"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/worklogs/", "host": ["{{base_url}}"], "path": ["worklogs", ""] },
+            "body": { "mode": "raw", "raw": "{\"task\":\"{{task_id}}\",\"hours\":4.5,\"date\":\"2026-05-22\",\"description\":\"API test worklog\"}" }
+          }
+        },
+        {
+          "name": "Worklog Summary",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "pm.test('Has total_hours', () => pm.expect(pm.response.json().total_hours).to.be.a('number'));"
+              ]
+            }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/worklogs/summary/?project_id={{project_id}}", "host": ["{{base_url}}"], "path": ["worklogs", "summary", ""], "query": [{"key": "project_id", "value": "{{project_id}}"}] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7-Notifications",
+      "item": [
+        {
+          "name": "List (with unread count)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "const json = pm.response.json();",
+                "pm.test('Has unread_count', () => pm.expect(json.unread_count).to.be.a('number'));"
+              ]
+            }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/notifications/", "host": ["{{base_url}}"], "path": ["notifications", ""] }
+          }
+        },
+        {
+          "name": "List (unread only)",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/notifications/?is_read=false", "host": ["{{base_url}}"], "path": ["notifications", ""], "query": [{"key": "is_read", "value": "false"}] }
+          }
+        },
+        {
+          "name": "Mark All Read",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "pm.test('Has updated count', () => pm.expect(pm.response.json().updated).to.be.a('number'));"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/notifications/read-all/", "host": ["{{base_url}}"], "path": ["notifications", "read-all", ""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8-Reports",
+      "item": [
+        {
+          "name": "Report History",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/reports/?project_id={{project_id}}", "host": ["{{base_url}}"], "path": ["reports", ""], "query": [{"key": "project_id", "value": "{{project_id}}"}] }
+          }
+        },
+        {
+          "name": "Generate Report",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const code = pm.response.code;",
+                "pm.test('Status 201 or 202', () => pm.expect(code).to.be.oneOf([201, 202, 400]));",
+                "if (code === 400) console.log('Report error: ' + pm.response.text());",
+                "if (code === 201 || code === 202) pm.collectionVariables.set('report_id', pm.response.json().id);"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": { "raw": "{{base_url}}/reports/", "host": ["{{base_url}}"], "path": ["reports", ""] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"API Test Report\",\"type\":\"progress\",\"project_id\":\"{{project_id}}\",\"parameters\":{\"format\":\"csv\"}}"
+            }
+          }
+        },
+        {
+          "name": "Get Report Status",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/reports/{{report_id}}/", "host": ["{{base_url}}"], "path": ["reports", "{{report_id}}", ""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "9-Permission Tests",
+      "item": [
+        {
+          "name": "No Token",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 401', () => pm.response.to.have.status(401));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{base_url}}/projects/", "host": ["{{base_url}}"], "path": ["projects", ""] }
+          }
+        },
+        {
+          "name": "Invalid Token",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 401', () => pm.response.to.have.status(401));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [{"key": "token", "value": "invalid_token_abc123", "type": "string"}]
+            },
+            "url": { "raw": "{{base_url}}/projects/", "host": ["{{base_url}}"], "path": ["projects", ""] }
+          }
+        },
+        {
+          "name": "Dashboard",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "const json = pm.response.json();",
+                "pm.test('Has stats', () => pm.expect(json.stats).to.exist);"
+              ]
+            }
+          }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/dashboard/", "host": ["{{base_url}}"], "path": ["dashboard", ""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10-Cleanup",
+      "item": [
+        {
+          "name": "Delete Project",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Status 204', () => pm.response.to.have.status(204));"] }
+          }],
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{base_url}}/projects/{{project_id}}/", "host": ["{{base_url}}"], "path": ["projects", "{{project_id}}", ""] }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -41,8 +41,8 @@
 | **周硕** | tasks + worklogs | `apps/tasks/` 任务CRUD/状态流转/任务依赖/评论/@提及、`apps/worklogs/` 工时记录/汇总统计/费率管理、数据库迁移 | `apps/tasks/` `apps/worklogs/` |
 | **赵嘉诚** | kanban + sprints + files + reports | `apps/kanban/` 看板/列CRUD/任务移动、`apps/sprints/` 冲刺CRUD/燃尽图数据、`apps/files/` 文件上传/下载/安全校验、`apps/reports/` 报表异步生成(Celery) | `apps/kanban/` `apps/sprints/` `apps/files/` `apps/reports/` |
 
-5. 数据库：赵嘉诚
-6. 测试与部署：赵嘉诚
+5. 项目测试：赵嘉诚
+6. 云端部署：万晶宇 赵嘉诚
 
 ## 需求分析
 

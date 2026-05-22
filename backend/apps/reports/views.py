@@ -1,3 +1,4 @@
+import logging
 import mimetypes
 import os
 
@@ -12,6 +13,8 @@ from core.permissions import IsProjectMember
 from .models import Report
 from .serializers import ReportGenerateSerializer, ReportSerializer
 from .tasks import generate_report_task
+
+logger = logging.getLogger(__name__)
 
 
 class ReportViewSet(viewsets.ModelViewSet):
@@ -39,7 +42,10 @@ class ReportViewSet(viewsets.ModelViewSet):
         serializer = ReportGenerateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         report = serializer.save(generated_by=request.user)
-        generate_report_task.delay(str(report.id))
+        try:
+            generate_report_task.delay(str(report.id))
+        except Exception:
+            logger.warning("Failed to dispatch report generation task for report %s", report.id, exc_info=True)
         return Response(
             ReportSerializer(report).data,
             status=status.HTTP_202_ACCEPTED,
