@@ -78,6 +78,24 @@ const routes = [
         meta: { title: '报表' }
       },
       {
+        path: 'projects/:id/worklogs',
+        name: 'Worklogs',
+        component: () => import('@/pages/worklog/Index.vue'),
+        meta: { title: '工时管理' }
+      },
+      {
+        path: 'projects/:id/files',
+        name: 'Files',
+        component: () => import('@/pages/files/Index.vue'),
+        meta: { title: '文件管理' }
+      },
+      {
+        path: 'projects/:id/rates',
+        name: 'Rates',
+        component: () => import('@/pages/rates/Index.vue'),
+        meta: { title: '费率管理' }
+      },
+      {
         path: 'settings',
         name: 'Settings',
         component: () => import('@/pages/settings/Index.vue'),

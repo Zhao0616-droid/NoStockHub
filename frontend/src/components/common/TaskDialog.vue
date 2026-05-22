@@ -34,9 +34,13 @@
         </el-col>
         <el-col :span="8">
           <el-form-item label="负责人">
-            <el-select v-model="form.assignee_id" style="width:100%" filterable placeholder="选择负责人">
-              <el-option label="张三" value="u1" />
-              <el-option label="李四" value="u2" />
+            <el-select v-model="form.assignee_id" style="width:100%" filterable placeholder="选择负责人" clearable>
+              <el-option
+                v-for="m in members"
+                :key="m.user?.id"
+                :label="m.user?.username"
+                :value="m.user?.id"
+              />
             </el-select>
           </el-form-item>
         </el-col>
@@ -70,6 +74,7 @@
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useTaskStore } from '@/stores/task'
+import { projectAPI } from '@/api'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -81,6 +86,7 @@ const taskStore = useTaskStore()
 
 const formRef = ref()
 const saving = ref(false)
+const members = ref([])
 const form = ref(getDefaultForm())
 const rules = {
   title: [{ required: true, message: '请输入任务标题', trigger: 'blur' }]
@@ -94,11 +100,22 @@ function getDefaultForm() {
   }
 }
 
+async function loadMembers() {
+  if (!props.projectId) return
+  try {
+    const res = await projectAPI.members(props.projectId)
+    members.value = res.results || res || []
+  } catch {
+    members.value = []
+  }
+}
+
 watch(() => props.modelValue, (v) => {
   if (v && props.task) {
-    form.value = { ...getDefaultForm(), ...props.task }
+    form.value = { ...getDefaultForm(), ...props.task, assignee_id: props.task.assignee?.id || '' }
   } else if (v) {
     form.value = getDefaultForm()
+    loadMembers()
   }
 })
 
@@ -116,14 +133,15 @@ async function handleSave() {
     }
     delete payload.project_id
     delete payload.assignee_id
+    let result
     if (props.task) {
-      await taskStore.updateTask(props.task.id, payload)
+      result = await taskStore.updateTask(props.task.id, payload)
       ElMessage.success('任务更新成功')
     } else {
-      await taskStore.createTask(payload)
+      result = await taskStore.createTask(payload)
       ElMessage.success('任务创建成功')
     }
-    emit('saved')
+    emit('saved', result)
   } catch {
     ElMessage.error('操作失败')
   } finally {

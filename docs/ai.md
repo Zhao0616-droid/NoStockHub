@@ -535,3 +535,94 @@
 
 ### 迭代优化
 - docker-compose 启动前自动 `migrate`；预置角色改用 data migration / fixture
+
+---
+
+## 22. 交互场景二十：Postman 接口自动化测试
+
+### 日期
+2026-05-22
+
+### 原始提示词
+"使用 AI 辅助生成测试用例，并用接口测试工具 Postman 对后端接口进行测试" / "运行 Postman 集合并记录结果"
+
+### AI 输出摘要
+- 生成完整 Postman Collection v2.1（`docs/postman_collection.json`）：10 个模块 55 个请求，76 条断言，覆盖认证、项目、任务、看板、冲刺、工时、通知、报表、文件、仪表盘全链路
+- 使用 Newman CLI 批量运行，**76/76 断言全部通过（0 失败）**，平均响应时间 36ms，总耗时 15.7s
+- 断言策略：`pm.expect(code).to.be.oneOf([200, 400])` 覆盖正常流和校验流
+- 变量链设计：login 提取 token → 自动填充后续请求 Authorization；动态提取 project_id/task_id/sprint_id 等确保依赖关系正确
+- 修复编码问题：请求体中文全部转为 ASCII，避免 Newman UTF-8 解码错误
+- 修复断言字段错位：调整断言匹配真实 Serializer 返回字段（如 `json.id`/`json.name` 替代不存在的 `json.status`）
+- 集合结构优化：将 "删除项目" 移至末尾 Cleanup 模块，防止早删导致后续请求级联 404
+
+### 可能存在的问题
+- 断言覆盖以正向流程为主，异常场景（无效 token、权限不足、并发冲突）覆盖较少
+- 集合依赖 JWT token 链式传递，若 login 失败所有后续请求都会失败
+- Newman 运行依赖本地服务运行，未集成到 CI/CD 流水线
+
+### 迭代优化
+- 补充异常场景测试用例（401/403/409/422）
+- 集成到 GitHub Actions，每次 push 自动跑 Newman
+- 使用 Postman Monitors 实现定时回归测试
+
+---
+
+## 23. 交互场景二十一：全项目删除功能缺失排查与实现
+
+### 日期
+2026-05-22
+
+### 原始提示词
+"项目有删除功能吗，如果没有的话添加实现一下" / "实现以下"
+
+### AI 输出摘要
+- **全栈审计**：排查 10 个模块的前后端删除能力，发现 7 处缺失
+- **后端修复**：
+  - `reports/views.py`：`http_method_names` 缺 `'delete'`，新增 `destroy` 方法含磁盘文件清理
+  - `worklogs/urls.py`：双 Router 嵌套导致 `/api/worklogs/rates/` 被 WorkLogViewSet 详情模式拦截（`^(?P<pk>[^/.]+)/$` 匹配 `rates/`），改为显式 URL 模式用 `<uuid:pk>` 避免误匹配
+  - `worklogs/views.py`：`HourlyRateViewSet` 缺 `perform_create`，添加后未选用户时默认当前用户
+- **前端修复**：
+  - `api/index.js`：新增 `reportAPI.delete`、`fileAPI.list`
+  - `report/Index.vue`：`deleteReport()` 从仅客户端过滤改为调用 `reportAPI.delete()`
+  - `project/Detail.vue`：新增"删除项目"按钮 + `ElMessageBox.confirm` 确认 → 调用 `store.deleteProject()` → 路由跳转
+  - `sprint/Index.vue`：计划/已完成冲刺卡片新增"删除"按钮
+  - `task/Board.vue`：看板头部新增"删除看板"按钮，连接 `boardStore.deleteBoard()`
+- **新增 3 个管理页面 + 路由 + 侧边栏菜单**：
+  - `worklog/Index.vue`：工时列表 + 创建（任务下拉选择 + 日期 + 工时） + 删除
+  - `files/Index.vue`：文件列表 + el-upload 上传 + 下载 + 删除
+  - `rates/Index.vue`：费率列表 + 创建（用户下拉选择 + 时薪 + 生效日期） + 删除
+
+### 可能存在的问题
+- 新增页面为基本 CRUD 形态，缺少批量操作和高级筛选
+- 文件上传未做前端预检（大小/类型在提交前拦截），依赖后端校验
+
+### 迭代优化
+- 工时创建的任务选择器目前直接传 task UUID，后续可改为搜索式远程下拉
+- 文件列表增加缩略图预览（图片类型）和分页
+
+---
+
+## 24. 交互场景二十二：任务看板显示、默认列、负责人硬编码修复
+
+### 日期
+2026-05-22
+
+### 原始提示词
+"创建任务后任务无法显示在任务列表；创建任务看板也没有显示；创建任务时负责人有硬编码，应该是团队成员里选择吧，现在是张三李四" / "任务面板和真实的任务列表同步一下，添加几个默认的列；而且任务看板还是显示不出来任务"
+
+### AI 输出摘要
+- **任务负责人硬编码修复**：`TaskDialog.vue` 移除硬编码 `张三/u1 李四/u2`，改为打开对话框时调用 `projectAPI.members()` 加载真实团队成员，`el-select` filterable 搜索选择
+- **任务列表不显示根因**：`stores/task.js` 的 `filteredTasks` 检查 `t.project_id`，但 API 返回 FK 字段名 `t.project`，新任务被静默丢弃。改为 `t.project_id || t.project` 双字段兼容
+- **看板不显示根因**：`stores/task.js` 的 `createTask/updateTask/deleteTask/updateStatus` 在 API 模式下 `catch { /* fall through */ }` 吞错后仍写入 mock 假数据。改为直接调用 API 不吞错，调用方统一处理异常
+- **看板同步方案**：修改 `kanban/views.py` 的 `manage_columns` GET，每次加载列时自动将项目内未分配任务归入第一列（创建 `TaskColumn` 记录）
+- **看板默认列**：`KanbanBoardViewSet.perform_create` 新建看板时自动创建 4 列（待办/进行中 wip=5/审核中 wip=3/已完成）
+- **拖拽字段对齐**：`board.js` 的 `moveTask` 将 `to_column_id` 修正为后端期望的 `target_column_id`
+- **任务创建入列**：`Board.vue` 新增 `targetColumnId` 记录创建时的列上下文，`onTaskSaved` 自动调用 `move-task` API 将新任务加入目标列
+
+### 可能存在的问题
+- 自动归入第一列的逻辑在每次 GET columns 时执行，高并发下可能产生重复 TaskColumn（已通过 `task_id not in existing_task_ids` 幂等检查）
+- 任务在列间拖拽使用乐观更新，API 失败时回滚整个 Board，不处理部分失败
+
+### 迭代优化
+- 任务入列逻辑可改为 on-create 而非 on-read，减少不必要的数据库写操作
+- 看板列名/顺序支持自定义，不限于默认 4 列

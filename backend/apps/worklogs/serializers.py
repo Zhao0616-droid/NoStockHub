@@ -26,6 +26,7 @@ class HourlyRateSerializer(serializers.ModelSerializer):
         model = HourlyRate
         fields = ['id', 'user', 'user_summary', 'project', 'rate', 'effective_from', 'created_at']
         read_only_fields = ['id', 'created_at']
+        extra_kwargs = {'user': {'required': False}}
 
     def get_user_summary(self, obj):
         return {'id': str(obj.user_id), 'username': obj.user.username}

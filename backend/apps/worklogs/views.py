@@ -68,3 +68,9 @@ class HourlyRateViewSet(viewsets.ModelViewSet):
         if user_id:
             queryset = queryset.filter(user_id=user_id)
         return queryset
+
+    def perform_create(self, serializer):
+        if not serializer.validated_data.get('user'):
+            serializer.save(user=self.request.user)
+        else:
+            serializer.save()

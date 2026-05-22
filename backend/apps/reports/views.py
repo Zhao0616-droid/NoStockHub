@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class ReportViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
-    http_method_names = ['get', 'post', 'head', 'options']
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
     def get_queryset(self):
         queryset = Report.objects.select_related('generated_by', 'project').all()
@@ -50,6 +50,13 @@ class ReportViewSet(viewsets.ModelViewSet):
             ReportSerializer(report).data,
             status=status.HTTP_202_ACCEPTED,
         )
+
+    def destroy(self, request, *args, **kwargs):
+        report = self.get_object()
+        if report.file_path and os.path.exists(report.file_path):
+            os.remove(report.file_path)
+        report.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['get'])
     def download(self, request, pk=None):

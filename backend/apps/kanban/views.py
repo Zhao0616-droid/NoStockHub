@@ -1,3 +1,4 @@
+from django.apps import apps
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -45,12 +46,44 @@ class KanbanBoardViewSet(viewsets.ModelViewSet):
             return [IsAuthenticated(), IsProjectMember()]
         return [IsAuthenticated()]
 
+    def perform_create(self, serializer):
+        board = serializer.save()
+        # Create default columns
+        defaults = [
+            {'name': '待办', 'order': 0, 'wip_limit': 0},
+            {'name': '进行中', 'order': 1, 'wip_limit': 5},
+            {'name': '审核中', 'order': 2, 'wip_limit': 3},
+            {'name': '已完成', 'order': 3, 'wip_limit': 0},
+        ]
+        for col in defaults:
+            KanbanColumn.objects.create(board=board, **col)
+
     @action(detail=True, methods=['get', 'post'], url_path='columns')
     def manage_columns(self, request, pk=None):
         board = self.get_object()
 
         if request.method == 'GET':
-            columns = board.columns.all()
+            columns = board.columns.order_by('order')
+            # Auto-assign unassigned project tasks to first column
+            first_col = columns.first()
+            if first_col:
+                existing_task_ids = set()
+                for col in columns:
+                    existing_task_ids.update(tc.task_id for tc in col.task_columns.all())
+                Task = apps.get_model('tasks', 'Task')
+                if Task is not None:
+                    project_tasks = Task.objects.filter(project=board.project).values_list('id', flat=True)
+                    next_order = first_col.task_columns.count()
+                    for task_id in project_tasks:
+                        if task_id not in existing_task_ids:
+                            TaskColumn.objects.create(
+                                task_id=task_id,
+                                column=first_col,
+                                order=next_order,
+                            )
+                            next_order += 1
+            # Refresh columns after potential inserts
+            columns = board.columns.order_by('order')
             return Response(KanbanColumnSerializer(columns, many=True).data)
 
         serializer = KanbanColumnCreateSerializer(data=request.data)

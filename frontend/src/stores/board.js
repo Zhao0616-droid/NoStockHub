@@ -154,7 +154,7 @@ export const useBoardStore = defineStore('board', () => {
 
     if (!useMock.value) {
       try {
-        await boardAPI.moveTask(boardId, { task_id: taskId, from_column_id: fromColumnId, to_column_id: toColumnId, order })
+        await boardAPI.moveTask(boardId, { task_id: taskId, target_column_id: toColumnId, order })
       } catch {
         await fetchBoard(boardId) // 回滚
       }

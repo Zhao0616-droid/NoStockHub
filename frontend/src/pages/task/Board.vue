@@ -19,6 +19,7 @@
         </el-select>
         <el-button @click="showAddBoard = true">+ 看板</el-button>
         <el-button @click="showAddColumn = true" :disabled="!selectedBoardId">+ 列</el-button>
+        <el-button type="danger" :disabled="!selectedBoardId" @click="handleDeleteBoard">删除看板</el-button>
         <el-button type="primary" @click="openCreateTask()">+ 任务</el-button>
       </div>
     </div>
@@ -223,6 +224,23 @@ async function onBoardChange(boardId) {
   await boardStore.fetchBoard(boardId)
 }
 
+async function handleDeleteBoard() {
+  if (!selectedBoardId.value) return
+  const board = boardStore.boards.find(b => b.id === selectedBoardId.value)
+  try {
+    await ElMessageBox.confirm(
+      `确定删除看板「${board?.name || ''}」？看板中的列也会被删除。`,
+      '确认删除',
+      { type: 'warning' }
+    )
+    await boardStore.deleteBoard(selectedBoardId.value)
+    selectedBoardId.value = ''
+    ElMessage.success('看板已删除')
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('删除失败')
+  }
+}
+
 async function handleCreateBoard() {
   if (!newBoardForm.value.name) {
     ElMessage.warning('请输入看板名称')
@@ -387,9 +405,11 @@ function showTaskDetail(task) {
 // --------------- 任务创建/编辑 ---------------
 const taskDialogVisible = ref(false)
 const editingTask = ref(null)
+const targetColumnId = ref(null)
 
 function openCreateTask(columnId) {
   editingTask.value = null
+  targetColumnId.value = columnId || null
   taskDialogVisible.value = true
 }
 
@@ -412,9 +432,20 @@ async function handleDeleteTask(task) {
   }
 }
 
-function onTaskSaved() {
+async function onTaskSaved(task) {
   taskDialogVisible.value = false
   if (selectedBoardId.value) {
+    // If we have a target column, add the new task to it
+    if (task && targetColumnId.value) {
+      try {
+        await boardAPI.moveTask(selectedBoardId.value, {
+          task_id: task.id,
+          target_column_id: targetColumnId.value,
+          order: 0
+        })
+      } catch { /* task still exists, just not on board yet */ }
+      targetColumnId.value = null
+    }
     boardStore.fetchBoard(selectedBoardId.value)
   }
 }

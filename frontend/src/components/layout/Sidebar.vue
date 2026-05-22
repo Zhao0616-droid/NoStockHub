@@ -47,6 +47,18 @@
           <el-icon><Document /></el-icon>
           <template #title>报表</template>
         </el-menu-item>
+        <el-menu-item :index="`/projects/${projectId}/worklogs`">
+          <el-icon><Clock /></el-icon>
+          <template #title>工时管理</template>
+        </el-menu-item>
+        <el-menu-item :index="`/projects/${projectId}/files`">
+          <el-icon><FolderOpened /></el-icon>
+          <template #title>文件管理</template>
+        </el-menu-item>
+        <el-menu-item :index="`/projects/${projectId}/rates`">
+          <el-icon><Coin /></el-icon>
+          <template #title>费率管理</template>
+        </el-menu-item>
       </template>
     </el-menu>
   </div>
@@ -57,7 +69,8 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   Odometer, Folder, DataBoard, List,
-  Grid, TrendCharts, Timer, Document
+  Grid, TrendCharts, Timer, Document,
+  Clock, FolderOpened, Coin
 } from '@element-plus/icons-vue'
 
 defineProps({ isCollapse: Boolean })

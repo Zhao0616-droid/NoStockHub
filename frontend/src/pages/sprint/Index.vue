@@ -33,7 +33,10 @@
       <el-card v-for="s in plannedSprints" :key="s.id" class="planned-sprint">
         <div class="sprint-header">
           <span>{{ s.name }} ({{ s.status === 'planning' ? '规划中' : '已完成' }})</span>
-          <el-button v-if="s.status === 'planning'" size="small" type="primary" @click="handleStart(s.id)">启动冲刺</el-button>
+          <div class="sprint-header-actions">
+            <el-button v-if="s.status === 'planning'" size="small" type="primary" @click="handleStart(s.id)">启动冲刺</el-button>
+            <el-button size="small" type="danger" @click="handleDeleteSprint(s)">删除</el-button>
+          </div>
         </div>
         <p>{{ s.start_date }} ~ {{ s.end_date }}</p>
         <p v-if="s.goal" class="sprint-goal">{{ s.goal }}</p>
@@ -77,7 +80,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { sprintAPI } from '@/api'
 import { BurndownChart } from '@/components/charts'
 
@@ -178,6 +181,21 @@ async function handleComplete() {
   }
 }
 
+async function handleDeleteSprint(sprint) {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除冲刺「${sprint.name}」？`,
+      '确认删除',
+      { type: 'warning' }
+    )
+    await sprintAPI.delete(sprint.id)
+    ElMessage.success('冲刺已删除')
+    fetchSprints()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('删除失败')
+  }
+}
+
 async function removeTask(taskId) {
   if (!activeSprint.value) return
   try {
@@ -217,6 +235,7 @@ onMounted(fetchSprints)
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .active-sprint { margin-bottom: 16px; }
 .sprint-header { display: flex; justify-content: space-between; align-items: center; }
+.sprint-header-actions { display: flex; gap: 8px; }
 .sprint-goal { color: #606266; }
 .sprint-date { font-size: 13px; color: #909399; margin: 8px 0; }
 .sprint-tasks { margin: 12px 0; }

@@ -181,6 +181,24 @@
 
 ---
 
+### 近期联调修复与功能补充（2026-05-22）
+
+以下为赵嘉诚在阶段三后期完成的跨模块联调修复、缺失功能补充与测试工作：
+
+| 类别 | 具体工作 | 涉及文件 |
+|------|---------|---------|
+| **Postman 接口测试** | 生成 10 模块 55 请求 76 断言完整测试集合，Newman CLI 全量通过（0 失败，15.7s） | `docs/postman_collection.json`、`docs/test.md` |
+| **删除功能补全** | 全项目 10 模块删除能力审计，修复 7 处缺失：Report 后端 destroy + 磁盘清理、前端 reportAPI.delete、项目/冲刺/看板删除按钮、工作日志/文件/费率 3 个管理页面新建 + 路由 + 侧边栏 | `backend/apps/reports/views.py`、`frontend/src/api/index.js`、`frontend/src/pages/report/Index.vue`、`frontend/src/pages/project/Detail.vue`、`frontend/src/pages/sprint/Index.vue`、`frontend/src/pages/task/Board.vue`、`frontend/src/pages/worklog/Index.vue`（新建）、`frontend/src/pages/files/Index.vue`（新建）、`frontend/src/pages/rates/Index.vue`（新建）、`frontend/src/router/index.js`、`frontend/src/components/layout/Sidebar.vue` |
+| **Bug 修复** | ① 任务负责人硬编码"张三/李四"改为加载项目真实成员 ② 任务列表不显示：`filteredTasks` 只检查 `project_id` 但 API 返回 `project`，修复双字段兼容 ③ 任务创建/更新/删除在 API 失败时静默写 mock 假数据，改为直接抛错 ④ 费率 API 路由被 WorkLogViewSet 详情正则拦截，改为显式 URL + `<uuid:pk>` ⑤ 看板拖拽字段 `to_column_id` → `target_column_id` 对齐后端 ⑥ 报表 Celery 调用未 try-except，Redis 不可用时 500，改为捕获异常返回 202 | `frontend/src/components/common/TaskDialog.vue`、`frontend/src/stores/task.js`、`backend/apps/worklogs/urls.py`、`frontend/src/stores/board.js`、`backend/apps/reports/views.py` |
+| **看板功能增强** | ① 新建看板自动创建 4 个默认列（待办/进行中/审核中/已完成）② 加载列时自动同步项目任务到第一列（未分配任务归入"待办"）③ 从看板列创建任务后自动入列 | `backend/apps/kanban/views.py`、`frontend/src/pages/task/Board.vue` |
+| **费率管理增强** | 添加用户选择器（默认当前用户可选项目成员）、后端 `HourlyRateViewSet.perform_create` 自动设置用户 | `frontend/src/pages/rates/Index.vue`、`backend/apps/worklogs/views.py`、`backend/apps/worklogs/serializers.py` |
+| **工时管理增强** | 任务从手动输入 UUID 改为下拉选择项目任务、校验错误提示从"记录失败"改为字段级中文提示 | `frontend/src/pages/worklog/Index.vue` |
+| **错误提示优化** | 多处 `catch` 只取 `detail` 导致字段级校验错误无提示，统一添加 `formatErrors` 遍历所有字段拼接 | `frontend/src/pages/project/Detail.vue`、`frontend/src/pages/rates/Index.vue`、`frontend/src/pages/worklog/Index.vue` |
+
+> 产出：2 个后端文件修改 + 3 个前端新建页面 + 9 个前端文件修改 + 8 处 Bug 修复 + 1 个 Postman 测试集合。看板与任务列表数据同步打通，删除功能全模块覆盖，接口测试 76 断言全绿。
+
+---
+
 
 ## 开发约定
 

@@ -113,10 +113,12 @@ export const reportAPI = {
   generate: (data) => request.post('/reports/', data),
   detail: (id) => request.get(`/reports/${id}/`),
   download: (id) => request.get(`/reports/${id}/download/`, { responseType: 'blob' }),
+  delete: (id) => request.delete(`/reports/${id}/`),
 }
 
 // 文件
 export const fileAPI = {
+  list: (params) => request.get('/files/', { params }),
   upload: (file, taskId, projectId) => {
     const fd = new FormData(); fd.append('file', file)
     if (taskId) fd.append('task_id', taskId)

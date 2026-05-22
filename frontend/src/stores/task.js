@@ -73,9 +73,9 @@ export const useTaskStore = defineStore('task', () => {
       list = list.filter(t => t.type === filters.value.type)
     }
 
-    // 项目筛选
+    // 项目筛选 (API returns 'project', mock uses 'project_id')
     if (filters.value.project_id) {
-      list = list.filter(t => t.project_id === filters.value.project_id)
+      list = list.filter(t => (t.project_id || t.project) === filters.value.project_id)
     }
 
     // 排序
@@ -131,56 +131,28 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   async function createTask(data) {
-    if (!useMock.value) {
-      try {
-        const res = await taskAPI.create(data)
-        tasks.value.unshift(res)
-        return res
-      } catch { /* fall through */ }
-    }
-    // mock
-    const task = {
-      id: _tid(), status: 'todo', ...data,
-      assignee: data.assignee_id
-        ? { id: data.assignee_id, username: data.assignee_id === 'u1' ? '张三' : data.assignee_id === 'u2' ? '李四' : '王五' }
-        : null,
-      reporter: { id: 'u1', username: '张三' },
-      created_at: new Date().toISOString()
-    }
-    tasks.value.unshift(task)
-    return task
+    const res = await taskAPI.create(data)
+    tasks.value.unshift(res)
+    return res
   }
 
   async function updateTask(id, data) {
-    if (!useMock.value) {
-      try {
-        const res = await taskAPI.update(id, data)
-        const idx = tasks.value.findIndex(t => t.id === id)
-        if (idx !== -1) tasks.value[idx] = { ...tasks.value[idx], ...res }
-        if (currentTask.value?.id === id) currentTask.value = { ...currentTask.value, ...res }
-        return res
-      } catch { /* fall through */ }
-    }
-    // mock
+    const res = await taskAPI.update(id, data)
     const idx = tasks.value.findIndex(t => t.id === id)
-    if (idx !== -1) tasks.value[idx] = { ...tasks.value[idx], ...data }
-    if (currentTask.value?.id === id) currentTask.value = { ...currentTask.value, ...data }
-    return tasks.value[idx]
+    if (idx !== -1) tasks.value[idx] = { ...tasks.value[idx], ...res }
+    if (currentTask.value?.id === id) currentTask.value = { ...currentTask.value, ...res }
+    return res
   }
 
   async function updateStatus(id, status) {
-    if (!useMock.value) {
-      try { await taskAPI.updateStatus(id, status) } catch { /* fall through */ }
-    }
+    await taskAPI.updateStatus(id, status)
     const t = tasks.value.find(t => t.id === id)
     if (t) t.status = status
     if (currentTask.value?.id === id) currentTask.value.status = status
   }
 
   async function deleteTask(id) {
-    if (!useMock.value) {
-      try { await taskAPI.delete(id) } catch { /* fall through */ }
-    }
+    await taskAPI.delete(id)
     tasks.value = tasks.value.filter(t => t.id !== id)
     if (currentTask.value?.id === id) currentTask.value = null
   }

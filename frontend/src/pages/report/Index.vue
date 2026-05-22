@@ -455,9 +455,12 @@ async function downloadReport(row) {
 async function deleteReport(row) {
   try {
     await ElMessageBox.confirm(`确定删除「${row.name}」？`, '确认删除', { type: 'warning' })
+    await reportAPI.delete(row.id)
     reports.value = reports.value.filter(r => r.id !== row.id)
     ElMessage.success('已删除')
-  } catch { /* cancelled */ }
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('删除失败')
+  }
 }
 
 function typeLabel(type) {

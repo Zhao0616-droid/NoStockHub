@@ -8,6 +8,7 @@
       <div>
         <el-button @click="openEditDialog">编辑</el-button>
         <el-button type="primary" @click="$router.push(`/projects/${id}/board`)">进入看板</el-button>
+        <el-button type="danger" @click="handleDeleteProject">删除项目</el-button>
       </div>
     </div>
 
@@ -122,13 +123,14 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useProjectStore } from '@/stores/project'
 import { projectAPI, taskAPI } from '@/api'
 import StatusTag from '@/components/common/StatusTag.vue'
 
 const route = useRoute()
+const router = useRouter()
 const id = route.params.id
 const store = useProjectStore()
 
@@ -207,14 +209,40 @@ async function inviteMember() {
     await projectAPI.addMember(id, { user_id: inviteForm.user_id, role: inviteForm.role })
     ElMessage.success('成员已邀请')
     showInviteDialog.value = false
-    // 刷新成员列表
     const res = await projectAPI.members(id)
     members.value = res.results || res || []
   } catch (e) {
-    ElMessage.error(e.response?.data?.detail || '邀请失败')
+    ElMessage.error(formatErrors(e.response?.data) || '邀请失败')
   } finally {
     inviting.value = false
   }
+}
+
+async function handleDeleteProject() {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除项目「${project.value?.name}」？删除后所有任务、看板、冲刺等数据也将被删除，此操作不可恢复。`,
+      '确认删除项目',
+      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+    )
+    await store.deleteProject(id)
+    ElMessage.success('项目已删除')
+    router.push('/projects')
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('删除失败')
+  }
+}
+
+function formatErrors(data) {
+  if (!data) return null
+  if (typeof data === 'string') return data
+  return Object.entries(data)
+    .map(([k, v]) => {
+      const label = { user_id: '用户ID', non_field_errors: '' }[k] || k
+      const msg = Array.isArray(v) ? v.join(', ') : v
+      return label ? `${label}: ${msg}` : msg
+    })
+    .join('; ')
 }
 
 function roleLabel(role) {
