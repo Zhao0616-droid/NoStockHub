@@ -126,9 +126,22 @@
           <span :class="{ 'overdue': isOverdue(row) }">{{ row.due_date || '-' }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="status" label="状态" width="100" sortable="custom">
+      <el-table-column prop="status" label="状态" width="120" sortable="custom">
         <template #default="{ row }">
-          <StatusTag :status="row.status" />
+          <el-select
+            :model-value="row.status"
+            size="small"
+            style="width:100%"
+            @change="(val) => handleStatusChange(row, val)"
+            @click.stop
+          >
+            <el-option
+              v-for="opt in statusOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
+          </el-select>
         </template>
       </el-table-column>
       <el-table-column label="操作" width="120" fixed="right">
@@ -187,7 +200,22 @@ import { useTaskStore } from '@/stores/task'
 import { projectAPI } from '@/api'
 import TaskDialog from '@/components/common/TaskDialog.vue'
 import PriorityTag from '@/components/common/PriorityTag.vue'
-import StatusTag from '@/components/common/StatusTag.vue'
+
+const statusOptions = [
+  { label: '待办', value: 'todo' },
+  { label: '进行中', value: 'in_progress' },
+  { label: '审核中', value: 'review' },
+  { label: '已完成', value: 'done' },
+  { label: '阻塞', value: 'blocked' },
+]
+
+async function handleStatusChange(row, newStatus) {
+  try {
+    await taskStore.updateStatus(row.id, newStatus)
+  } catch {
+    ElMessage.error('状态更新失败')
+  }
+}
 
 const route = useRoute()
 const projectId = route.params.id

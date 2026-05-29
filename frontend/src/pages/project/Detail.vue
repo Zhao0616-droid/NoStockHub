@@ -157,6 +157,8 @@ const project = ref(null)
 const members = ref([])
 const milestones = ref([])
 const taskStats = ref({ total: 0, done: 0 })
+const totalTasks = computed(() => taskStats.value.total)
+const doneTasks = computed(() => taskStats.value.done)
 
 // --------------- 编辑 ---------------
 const showEditDialog = ref(false)

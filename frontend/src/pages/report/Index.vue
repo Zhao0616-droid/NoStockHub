@@ -226,8 +226,7 @@ const dateShortcuts = [
 const activeTab = ref('overview')
 
 function applyDateRange() {
-  // 日期范围变更时重新加载数据
-  loadAllData()
+  // filteredTasks computed 自动按日期范围过滤，无需重新请求
 }
 
 function onTabChange() {
@@ -248,6 +247,19 @@ function formatDateStr(d) {
   return `${date.getMonth() + 1}/${date.getDate()}`
 }
 
+// 按日期范围过滤任务
+const filteredTasks = computed(() => {
+  const [start, end] = dateRange.value
+  if (!start || !end) return allTasks.value
+  const startStr = start instanceof Date ? start.toISOString().slice(0, 10) : String(start).slice(0, 10)
+  const endStr = end instanceof Date ? end.toISOString().slice(0, 10) : String(end).slice(0, 10)
+  return filteredTasks.value.filter(t => {
+    const cd = t.created_at ? t.created_at.slice(0, 10) : ''
+    const dd = t.due_date || ''
+    return (cd >= startStr && cd <= endStr) || (dd >= startStr && dd <= endStr)
+  })
+})
+
 const statusColors = { todo: '#909399', in_progress: '#409EFF', review: '#E6A23C', done: '#67C23A', blocked: '#F56C6C' }
 const statusLabels = { todo: '待办', in_progress: '进行中', review: '审核中', done: '已完成', blocked: '阻塞' }
 const priorityColors = { low: '#909399', medium: '#409EFF', high: '#E6A23C', urgent: '#F56C6C' }
@@ -255,8 +267,8 @@ const priorityLabels = { low: '低', medium: '中', high: '高', urgent: '紧急
 
 // --------------- 概览统计 (computed from real data) ---------------
 const stats = computed(() => {
-  const total = allTasks.value.length
-  const completed = allTasks.value.filter(t => t.status === 'done').length
+  const total = filteredTasks.value.length
+  const completed = filteredTasks.value.filter(t => t.status === 'done').length
   const hours = allWorklogs.value.reduce((sum, w) => sum + (Number(w.hours) || 0), 0)
   const rate = total > 0 ? Math.round((completed / total) * 1000) / 10 : 0
   return { totalTasks: total, completedTasks: completed, totalHours: hours, completionRate: rate }
@@ -264,7 +276,7 @@ const stats = computed(() => {
 
 const statusDistData = computed(() => {
   const map = {}
-  allTasks.value.forEach(t => {
+  filteredTasks.value.forEach(t => {
     const key = t.status || 'todo'
     map[key] = (map[key] || 0) + 1
   })
@@ -273,7 +285,7 @@ const statusDistData = computed(() => {
 
 const priorityDistData = computed(() => {
   const map = {}
-  allTasks.value.forEach(t => {
+  filteredTasks.value.forEach(t => {
     const key = t.priority || 'medium'
     map[key] = (map[key] || 0) + 1
   })
@@ -283,7 +295,7 @@ const priorityDistData = computed(() => {
 // --------------- 任务统计 ---------------
 const trendDates = computed(() => {
   const dates = new Set()
-  allTasks.value.forEach(t => {
+  filteredTasks.value.forEach(t => {
     if (t.due_date) dates.add(t.due_date)
     if (t.created_at) dates.add(t.created_at.slice(0, 10))
   })
@@ -292,17 +304,17 @@ const trendDates = computed(() => {
 
 const completionTrendSeries = computed(() => {
   const byDate = {}
-  allTasks.value.filter(t => t.status === 'done' && t.due_date).forEach(t => {
+  filteredTasks.value.filter(t => t.status === 'done' && t.due_date).forEach(t => {
     byDate[t.due_date] = (byDate[t.due_date] || 0) + 1
   })
-  const dates = [...new Set(allTasks.value.filter(t => t.due_date).map(t => t.due_date))].sort()
+  const dates = [...new Set(filteredTasks.value.filter(t => t.due_date).map(t => t.due_date))].sort()
   let acc = 0
   return [{ name: '完成任务(累计)', data: dates.map(d => { acc += (byDate[d] || 0); return acc }), color: '#67C23A' }]
 })
 
 const createVsCompleteSeries = computed(() => {
   const created = {}, completed = {}
-  allTasks.value.forEach(t => {
+  filteredTasks.value.forEach(t => {
     const cd = t.created_at ? t.created_at.slice(0, 10) : null
     if (cd) created[cd] = (created[cd] || 0) + 1
     if (t.status === 'done' && t.due_date) completed[t.due_date] = (completed[t.due_date] || 0) + 1
@@ -316,7 +328,7 @@ const createVsCompleteSeries = computed(() => {
 
 const assigneeDistData = computed(() => {
   const map = {}
-  allTasks.value.forEach(t => {
+  filteredTasks.value.forEach(t => {
     const name = t.assignee_detail?.username || t.assignee?.username || '未分配'
     map[name] = (map[name] || 0) + 1
   })
@@ -326,7 +338,7 @@ const assigneeDistData = computed(() => {
 
 const typeDistData = computed(() => {
   const map = {}
-  allTasks.value.forEach(t => {
+  filteredTasks.value.forEach(t => {
     const key = t.type || 'task'
     const label = { task: '任务', bug: '缺陷', epic: '史诗' }[key] || key
     map[label] = (map[label] || 0) + 1
@@ -479,9 +491,9 @@ async function loadAllData() {
   loading.value = true
   try {
     const [tasksRes, worklogsRes, sprintsRes] = await Promise.all([
-      taskAPI.list({ project_id: projectId }).catch(() => ({ results: [] })),
-      worklogAPI.list({ project_id: projectId }).catch(() => ({ results: [] })),
-      sprintAPI.list({ project_id: projectId }).catch(() => ({ results: [] })),
+      taskAPI.list({ project_id: projectId, page_size: 1000 }).catch(() => ({ results: [] })),
+      worklogAPI.list({ project_id: projectId, page_size: 1000 }).catch(() => ({ results: [] })),
+      sprintAPI.list({ project_id: projectId, page_size: 100 }).catch(() => ({ results: [] })),
     ])
     allTasks.value = tasksRes.results || tasksRes || []
     allWorklogs.value = worklogsRes.results || worklogsRes || []

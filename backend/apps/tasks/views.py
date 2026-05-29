@@ -33,7 +33,11 @@ class TaskViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(priority=priority_filter)
         if assignee_id:
             queryset = queryset.filter(assignee_id=assignee_id)
-            
+
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(title__icontains=search)
+
         return queryset.select_related('assignee', 'reporter', 'project').prefetch_related('subtasks')
 
     def get_serializer_class(self):
@@ -56,7 +60,7 @@ class TaskViewSet(viewsets.ModelViewSet):
                 related_id=str(task.id)
             )
 
-    @action(detail=True, methods=['patch'])
+    @action(detail=True, methods=['patch'], url_path='status')
     def update_status(self, request, pk=None):
         task = self.get_object()
         serializer = TaskStatusUpdateSerializer(task, data=request.data, partial=True)

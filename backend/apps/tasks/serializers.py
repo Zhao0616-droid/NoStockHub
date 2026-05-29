@@ -30,8 +30,8 @@ class TaskListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Task
-        fields = ['id', 'title', 'status', 'status_display', 'priority', 'priority_display', 
-                  'due_date', 'assignee', 'progress', 'project']
+        fields = ['id', 'title', 'status', 'status_display', 'priority', 'priority_display',
+                  'due_date', 'assignee', 'estimated_hours', 'progress', 'project', 'sprint']
 
 class TaskDetailSerializer(serializers.ModelSerializer):
     assignee = UserSerializer(read_only=True)

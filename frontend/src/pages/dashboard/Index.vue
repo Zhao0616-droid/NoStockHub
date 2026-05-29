@@ -4,8 +4,8 @@
 
     <!-- 统计卡片 -->
     <el-row :gutter="16" class="stats-row">
-      <el-col :span="6" v-for="s in stats" :key="s.label">
-        <el-card shadow="hover" class="stat-card">
+      <el-col :span="6" v-for="(s, i) in stats" :key="s.label">
+        <el-card shadow="hover" class="stat-card" :class="{ clickable: s.link }" @click="s.link && $router.push(s.link)">
           <div class="stat-value">{{ s.value }}</div>
           <div class="stat-label">{{ s.label }}</div>
         </el-card>
@@ -18,7 +18,7 @@
         <el-card header="我的任务">
           <template v-if="myTasks.length">
             <div v-for="t in myTasks" :key="t.id" class="task-row" @click="goTask(t)">
-              <el-checkbox :model-value="t.status === 'done'" @change="toggleDone(t)" />
+              <el-checkbox :model-value="t.status === 'done'" @change.stop="toggleDone(t)" />
               <span class="task-title">{{ t.title }}</span>
               <PriorityTag :priority="t.priority" />
               <span class="task-due">{{ t.due_date || '-' }}</span>
@@ -87,9 +87,9 @@ async function fetchDashboard() {
   try {
     const res = await dashboardAPI.summary()
     stats.value = [
-      { label: '参与项目', value: res.stats.project_count },
-      { label: '待办任务', value: res.stats.pending_task_count },
-      { label: '进行中冲刺', value: res.stats.active_sprint_count },
+      { label: '参与项目', value: res.stats.project_count, link: '/projects' },
+      { label: '待办任务', value: res.stats.pending_task_count, link: '/projects' },
+      { label: '进行中冲刺', value: res.stats.active_sprint_count, link: '/projects' },
       { label: '完成率', value: res.stats.completion_rate + '%' }
     ]
     myTasks.value = res.my_tasks
@@ -104,7 +104,7 @@ async function fetchDashboard() {
 
 function goTask(task) {
   if (task.project_id) {
-    router.push(`/projects/${task.project_id}`)
+    router.push(`/projects/${task.project_id}/board`)
   }
 }
 
@@ -125,6 +125,8 @@ onMounted(fetchDashboard)
 <style scoped lang="scss">
 .stats-row { margin-bottom: 16px; }
 .stat-card { text-align: center; }
+.stat-card.clickable { cursor: pointer; }
+.stat-card.clickable:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 .stat-value { font-size: 28px; font-weight: bold; color: #409EFF; }
 .stat-label { font-size: 13px; color: #909399; margin-top: 4px; }
 .task-row {

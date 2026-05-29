@@ -120,6 +120,14 @@ watch(() => props.modelValue, (v) => {
   }
 })
 
+function formatDate(val) {
+  if (!val) return null
+  if (typeof val === 'string' && val.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val
+  const d = val instanceof Date ? val : new Date(val)
+  if (isNaN(d.getTime())) return null
+  return d.toISOString().slice(0, 10)
+}
+
 async function handleSave() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
@@ -129,8 +137,8 @@ async function handleSave() {
       ...form.value,
       project: form.value.project_id || props.projectId,
       assignee: form.value.assignee_id || null,
-      start_date: form.value.start_date ? new Date(form.value.start_date).toISOString().slice(0, 10) : null,
-      due_date: form.value.due_date ? new Date(form.value.due_date).toISOString().slice(0, 10) : null,
+      start_date: form.value.start_date ? formatDate(form.value.start_date) : null,
+      due_date: form.value.due_date ? formatDate(form.value.due_date) : null,
     }
     delete payload.project_id
     delete payload.assignee_id

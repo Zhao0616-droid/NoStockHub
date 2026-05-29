@@ -213,6 +213,9 @@ const projectId = route.params.id
 const boardStore = useBoardStore()
 const taskStore = useTaskStore()
 
+// 列名 → 任务状态码
+const COL_TO_STATUS = { '待办': 'todo', '进行中': 'in_progress', '审核中': 'review', '已完成': 'done' }
+
 // --------------- 看板选择 ---------------
 const selectedBoardId = ref('')
 const showAddBoard = ref(false)
@@ -435,7 +438,6 @@ async function handleDeleteTask(task) {
 async function onTaskSaved(task) {
   taskDialogVisible.value = false
   if (selectedBoardId.value) {
-    // If we have a target column, add the new task to it
     if (task && targetColumnId.value) {
       try {
         await boardAPI.moveTask(selectedBoardId.value, {
@@ -443,6 +445,12 @@ async function onTaskSaved(task) {
           target_column_id: targetColumnId.value,
           order: 0
         })
+        // 同步更新任务状态为对应列的状态码
+        const col = boardStore.columns.find(c => c.id === targetColumnId.value)
+        const statusCode = COL_TO_STATUS[col?.name]
+        if (statusCode) {
+          await taskStore.updateStatus(task.id, statusCode)
+        }
       } catch { /* task still exists, just not on board yet */ }
       targetColumnId.value = null
     }
@@ -458,7 +466,16 @@ function typeLabel(type) {
 // --------------- 初始化 ---------------
 onMounted(async () => {
   await boardStore.fetchBoards(projectId)
-  if (boardStore.boards.length > 0) {
+  if (boardStore.boards.length === 0) {
+    // 首次访问自动创建默认看板
+    const board = await boardStore.createBoard({
+      name: '团队看板',
+      type: 'team',
+      project_id: projectId,
+    })
+    selectedBoardId.value = board.id
+    await boardStore.fetchBoard(board.id)
+  } else {
     selectedBoardId.value = boardStore.boards[0].id
     await boardStore.fetchBoard(selectedBoardId.value)
   }

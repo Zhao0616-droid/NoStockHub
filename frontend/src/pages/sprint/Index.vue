@@ -22,6 +22,27 @@
             <el-tag v-for="t in sprintTasks" :key="t.id" closable style="margin:4px" @close="removeTask(t.id)">{{ t.title }}</el-tag>
             <el-empty v-if="!sprintTasks.length" description="暂无任务" :image-size="40" />
           </div>
+          <div v-if="activeSprint" class="add-task-row">
+            <el-select
+              v-model="selectedTaskId"
+              filterable
+              remote
+              reserve-keyword
+              placeholder="搜索任务添加到冲刺"
+              :remote-method="searchAvailableTasks"
+              :loading="searchingTasks"
+              clearable
+              style="width:260px"
+              @change="addTaskToSprint"
+            >
+              <el-option
+                v-for="t in availableTasks"
+                :key="t.id"
+                :label="t.title"
+                :value="t.id"
+              />
+            </el-select>
+          </div>
           <div class="sprint-actions">
             <el-button @click="openBurndown(activeSprint.id)">查看燃尽图</el-button>
             <el-button type="warning" @click="handleComplete">完成冲刺</el-button>
@@ -81,7 +102,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { sprintAPI } from '@/api'
+import { sprintAPI, taskAPI } from '@/api'
 import { BurndownChart } from '@/components/charts'
 
 const route = useRoute()
@@ -196,6 +217,42 @@ async function handleDeleteSprint(sprint) {
   }
 }
 
+// ----- 搜索待添加任务 -----
+const selectedTaskId = ref('')
+const availableTasks = ref([])
+const searchingTasks = ref(false)
+
+async function searchAvailableTasks(query) {
+  if (!query || query.trim().length < 1) {
+    availableTasks.value = []
+    return
+  }
+  searchingTasks.value = true
+  try {
+    const res = await taskAPI.list({ project_id: projectId.value, search: query.trim() })
+    const all = res.results || res || []
+    const sprintTaskIds = new Set(sprintTasks.value.map(t => t.id))
+    availableTasks.value = all.filter(t => !sprintTaskIds.has(t.id)).slice(0, 15)
+  } catch {
+    availableTasks.value = []
+  } finally {
+    searchingTasks.value = false
+  }
+}
+
+async function addTaskToSprint(taskId) {
+  if (!taskId || !activeSprint.value) return
+  try {
+    await sprintAPI.addTask(activeSprint.value.id, { task_id: taskId })
+    ElMessage.success('任务已添加到冲刺')
+    selectedTaskId.value = ''
+    availableTasks.value = []
+    await fetchSprintTasks(activeSprint.value.id)
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '添加失败')
+  }
+}
+
 async function removeTask(taskId) {
   if (!activeSprint.value) return
   try {
@@ -239,6 +296,7 @@ onMounted(fetchSprints)
 .sprint-goal { color: var(--el-text-color-regular); }
 .sprint-date { font-size: 13px; color: #909399; margin: 8px 0; }
 .sprint-tasks { margin: 12px 0; }
+.add-task-row { margin: 8px 0; }
 .sprint-actions { display: flex; gap: 8px; margin-top: 12px; }
 .planned-sprint { margin-bottom: 12px; }
 </style>
