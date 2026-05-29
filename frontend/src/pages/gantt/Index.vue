@@ -409,7 +409,7 @@ watch([viewMode, dateOffset], () => { nextTick(renderChart) })
   h2 {
     margin: 0;
     font-size: 20px;
-    color: #303133;
+    color: var(--el-text-color-primary);
   }
 }
 
@@ -431,7 +431,7 @@ watch([viewMode, dateOffset], () => { nextTick(renderChart) })
   min-width: 100px;
   text-align: center;
   font-size: 13px;
-  color: #606266;
+  color: var(--el-text-color-regular);
   font-weight: 500;
 }
 
@@ -452,7 +452,7 @@ watch([viewMode, dateOffset], () => { nextTick(renderChart) })
   margin-top: 12px;
   padding: 8px 0;
   font-size: 13px;
-  color: #606266;
+  color: var(--el-text-color-regular);
   flex-shrink: 0;
 }
 

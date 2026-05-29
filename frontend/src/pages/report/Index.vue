@@ -518,7 +518,7 @@ onMounted(() => {
   h2 {
     margin: 0;
     font-size: 20px;
-    color: #303133;
+    color: var(--el-text-color-primary);
   }
 }
 
@@ -583,7 +583,7 @@ onMounted(() => {
   h4 {
     margin: 0 0 12px 0;
     font-size: 14px;
-    color: #606266;
+    color: var(--el-text-color-regular);
     font-weight: 600;
   }
 }

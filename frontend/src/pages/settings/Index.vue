@@ -99,7 +99,7 @@
               </el-select>
             </el-form-item>
             <el-form-item label="主题">
-              <el-radio-group v-model="theme">
+              <el-radio-group v-model="themeMode">
                 <el-radio value="light">浅色主题</el-radio>
                 <el-radio value="dark">深色主题</el-radio>
                 <el-radio value="auto">跟随系统</el-radio>
@@ -162,9 +162,11 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import { useThemeStore } from '@/stores/theme'
 import { authAPI, notificationAPI } from '@/api'
 
 const auth = useAuthStore()
+const themeStore = useThemeStore()
 const saving = ref(false)
 const twoFactorLoading = ref(false)
 const showPasswordDialog = ref(false)
@@ -179,7 +181,7 @@ const profile = ref({
 const twoFactorEnabled = ref(false)
 const notificationPrefs = ref(['task_assigned', 'status_change', 'comment_mention'])
 const language = ref('zh-CN')
-const theme = ref('light')
+const themeMode = ref(themeStore.mode)
 const fontSize = ref(14)
 
 const passwordForm = reactive({
@@ -216,11 +218,11 @@ onMounted(async () => {
     notificationPrefs.value = prefs.preferences || []
     
     // 获取主题设置
+    themeMode.value = themeStore.mode
     const saved = localStorage.getItem('theme_settings')
     if (saved) {
       const settings = JSON.parse(saved)
       language.value = settings.language || 'zh-CN'
-      theme.value = settings.theme || 'light'
       fontSize.value = settings.fontSize || 14
     }
   } catch (error) {
@@ -292,18 +294,13 @@ async function saveNotificationPrefs() {
 async function saveThemeSettings() {
   saving.value = true
   try {
+    themeStore.setTheme(themeMode.value)
     const settings = {
       language: language.value,
-      theme: theme.value,
       fontSize: fontSize.value
     }
     localStorage.setItem('theme_settings', JSON.stringify(settings))
     ElMessage.success('主题设置已保存')
-    
-    // 这里可以添加应用主题和语言的逻辑
-    if (theme.value !== 'auto') {
-      document.documentElement.setAttribute('data-theme', theme.value)
-    }
   } catch (error) {
     ElMessage.error('保存失败')
   } finally {
@@ -344,7 +341,7 @@ async function changePassword() {
 <style scoped lang="scss">
 .settings-page {
   padding: 20px;
-  background: #f2f3f5;
+  background: var(--app-main-bg);
   min-height: 100vh;
 }
 

@@ -129,7 +129,7 @@ async function verifyBackup() {
     text-align: center;
     font-size: 22px;
     margin-bottom: 8px;
-    color: #303133;
+    color: var(--el-text-color-primary);
   }
 
   .subtitle {

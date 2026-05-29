@@ -236,7 +236,7 @@ onMounted(fetchSprints)
 .active-sprint { margin-bottom: 16px; }
 .sprint-header { display: flex; justify-content: space-between; align-items: center; }
 .sprint-header-actions { display: flex; gap: 8px; }
-.sprint-goal { color: #606266; }
+.sprint-goal { color: var(--el-text-color-regular); }
 .sprint-date { font-size: 13px; color: #909399; margin: 8px 0; }
 .sprint-tasks { margin: 12px 0; }
 .sprint-actions { display: flex; gap: 8px; margin-top: 12px; }

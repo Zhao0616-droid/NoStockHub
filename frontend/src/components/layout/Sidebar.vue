@@ -7,9 +7,6 @@
     <el-menu
       :default-active="activeMenu"
       :collapse="isCollapse"
-      background-color="#304156"
-      text-color="#bfcbd9"
-      active-text-color="#409EFF"
       router
     >
       <el-menu-item index="/dashboard">
@@ -22,7 +19,7 @@
       </el-menu-item>
 
       <template v-if="isProjectRoute">
-        <el-divider style="margin:8px 0;border-color:#4a5568" />
+        <el-divider style="margin:8px 0" />
         <el-menu-item :index="`/projects/${projectId}`">
           <el-icon><DataBoard /></el-icon>
           <template #title>项目概览</template>
@@ -85,7 +82,18 @@ const projectId = computed(() => route.params.id)
 .sidebar { height: 100%; display: flex; flex-direction: column; }
 .logo {
   height: 56px; display: flex; align-items: center; justify-content: center;
-  color: #fff; font-size: 18px; font-weight: bold; border-bottom: 1px solid #4a5568;
+  color: #fff; font-size: 18px; font-weight: bold;
+  border-bottom: 1px solid var(--app-sidebar-logo-border);
 }
-.el-menu { border-right: none; flex: 1; overflow-y: auto; }
+.el-menu {
+  border-right: none; flex: 1; overflow-y: auto;
+  --el-menu-bg-color: var(--app-sidebar-bg);
+  --el-menu-text-color: var(--app-sidebar-text);
+  --el-menu-active-color: var(--app-sidebar-active);
+  --el-menu-hover-bg-color: var(--app-sidebar-logo-border);
+}
+/* divider 颜色跟随 */
+:deep(.el-divider) {
+  border-color: var(--app-sidebar-logo-border);
+}
 </style>

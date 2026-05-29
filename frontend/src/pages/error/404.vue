@@ -59,7 +59,7 @@ function goBack() {
 
 .error-title {
   font-size: 24px;
-  color: #303133;
+  color: var(--el-text-color-primary);
   margin-bottom: 12px;
 }
 

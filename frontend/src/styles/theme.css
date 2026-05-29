@@ -1,0 +1,25 @@
+/* ====== 亮色模式（默认） ====== */
+:root {
+  --app-sidebar-bg: #304156;
+  --app-sidebar-text: #bfcbd9;
+  --app-sidebar-active: #409EFF;
+  --app-sidebar-logo-border: #4a5568;
+  --app-header-bg: #fff;
+  --app-header-border: #dcdfe6;
+  --app-main-bg: #f2f3f5;
+  --app-icon-color: #606266;
+  --app-text-primary: #303133;
+}
+
+/* ====== 暗色模式 ====== */
+html.dark {
+  --app-sidebar-bg: #1d1e1f;
+  --app-sidebar-text: #a3a6ad;
+  --app-sidebar-active: #409EFF;
+  --app-sidebar-logo-border: #333;
+  --app-header-bg: #1d1e1f;
+  --app-header-border: #333;
+  --app-main-bg: #141414;
+  --app-icon-color: #a3a6ad;
+  --app-text-primary: #e5eaf3;
+}

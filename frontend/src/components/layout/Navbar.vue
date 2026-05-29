@@ -13,6 +13,10 @@
       <el-badge :value="unreadCount" :hidden="unreadCount === 0" :max="99">
         <el-icon class="bell-icon" @click="showNotifications"><Bell /></el-icon>
       </el-badge>
+      <el-icon class="theme-toggle" @click="toggleTheme">
+        <Sunny v-if="theme.isDark" />
+        <Moon v-else />
+      </el-icon>
       <el-dropdown trigger="click" @command="handleCommand">
         <span class="user-info">
           <el-avatar :size="32" :src="user.avatar" />
@@ -35,16 +39,22 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notification'
-import { Fold, Bell } from '@element-plus/icons-vue'
+import { Fold, Bell, Sunny, Moon } from '@element-plus/icons-vue'
+import { useThemeStore } from '@/stores/theme'
 
 defineEmits(['toggleSidebar'])
 const router = useRouter()
 const auth = useAuthStore()
 const notification = useNotificationStore()
+const theme = useThemeStore()
 
 const user = computed(() => auth.user || {})
 const unreadCount = computed(() => notification.unreadCount)
 const currentProject = computed(() => null)
+
+function toggleTheme() {
+  theme.setTheme(theme.isDark ? 'light' : 'dark')
+}
 
 function showNotifications() {
   notification.fetchNotifications()
@@ -68,9 +78,10 @@ function handleCommand(cmd) {
   height: 100%;
 }
 .navbar-left { display: flex; align-items: center; gap: 12px; }
-.collapse-btn { cursor: pointer; font-size: 20px; color: #606266; }
+.collapse-btn { cursor: pointer; font-size: 20px; color: var(--app-icon-color); }
 .navbar-right { display: flex; align-items: center; gap: 20px; }
-.bell-icon { font-size: 20px; cursor: pointer; color: #606266; }
+.bell-icon { font-size: 20px; cursor: pointer; color: var(--app-icon-color); }
+.theme-toggle { font-size: 20px; cursor: pointer; color: var(--app-icon-color); }
 .user-info { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-.username { font-size: 14px; color: #303133; }
+.username { font-size: 14px; color: var(--app-text-primary); }
 </style>

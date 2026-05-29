@@ -354,7 +354,7 @@ watch(() => route.params.id, (newId) => {
   h2 {
     margin: 0;
     font-size: 20px;
-    color: #303133;
+    color: var(--el-text-color-primary);
   }
 }
 

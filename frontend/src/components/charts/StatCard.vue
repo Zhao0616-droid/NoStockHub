@@ -129,7 +129,7 @@ watch(() => props.value, () => {
 .stat-value {
   font-size: 26px;
   font-weight: 700;
-  color: #303133;
+  color: var(--el-text-color-primary);
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }

@@ -28,7 +28,7 @@ const isCollapse = ref(false)
   overflow: hidden;
 }
 .app-aside {
-  background: #304156;
+  background: var(--app-sidebar-bg);
   transition: width 0.3s;
   overflow: hidden;
   height: 100vh;
@@ -37,13 +37,13 @@ const isCollapse = ref(false)
   overflow: hidden;
 }
 .app-header {
-  background: #fff;
-  border-bottom: 1px solid #dcdfe6;
+  background: var(--app-header-bg);
+  border-bottom: 1px solid var(--app-header-border);
   padding: 0 16px;
   flex-shrink: 0;
 }
 .app-main {
-  background: #f2f3f5;
+  background: var(--app-main-bg);
   flex: 1;
   overflow-y: auto;
 }

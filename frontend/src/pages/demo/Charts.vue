@@ -161,7 +161,7 @@ section {
   h3 {
     margin: 0 0 16px 0;
     font-size: 17px;
-    color: #303133;
+    color: var(--el-text-color-primary);
     padding-bottom: 8px;
     border-bottom: 1px solid #ebeef5;
   }
@@ -208,7 +208,7 @@ section {
     h4 {
       margin: 0 0 8px 0;
       font-size: 14px;
-      color: #606266;
+      color: var(--el-text-color-regular);
     }
   }
 }
@@ -228,7 +228,7 @@ section {
     h4 {
       margin: 0 0 8px 0;
       font-size: 14px;
-      color: #606266;
+      color: var(--el-text-color-regular);
     }
   }
 }

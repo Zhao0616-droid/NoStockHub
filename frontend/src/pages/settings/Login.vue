@@ -224,7 +224,7 @@ function devLogin() {
   font-size: 22px;
   font-weight: bold;
   margin-bottom: 4px;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 
 .login-subtitle {

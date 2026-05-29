@@ -482,7 +482,7 @@ onMounted(async () => {
   h2 {
     margin: 0;
     font-size: 20px;
-    color: #303133;
+    color: var(--el-text-color-primary);
   }
 }
 
@@ -517,7 +517,7 @@ onMounted(async () => {
   min-width: 280px;
   max-width: 320px;
   flex-shrink: 0;
-  background: #f2f3f5;
+  background: var(--el-bg-color-page);
   border-radius: 8px;
   padding: 12px;
   display: flex;
@@ -526,8 +526,8 @@ onMounted(async () => {
   transition: background 0.2s, box-shadow 0.2s;
 
   &.drag-over {
-    background: #e8f4fd;
-    box-shadow: inset 0 0 0 2px #409eff;
+    background: var(--el-color-primary-light-9);
+    box-shadow: inset 0 0 0 2px var(--el-color-primary);
   }
 }
 
@@ -537,11 +537,11 @@ onMounted(async () => {
   align-items: center;
   padding-bottom: 8px;
   margin-bottom: 8px;
-  border-bottom: 2px solid #dcdfe6;
+  border-bottom: 2px solid var(--el-border-color);
   flex-shrink: 0;
 
   &.wip-exceeded {
-    border-bottom-color: #f56c6c;
+    border-bottom-color: var(--el-color-danger);
   }
 }
 
@@ -551,7 +551,7 @@ onMounted(async () => {
   gap: 8px;
   font-weight: 600;
   font-size: 14px;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 
 .column-count {
@@ -570,7 +570,7 @@ onMounted(async () => {
     width: 4px;
   }
   &::-webkit-scrollbar-thumb {
-    background: #c0c4cc;
+    background: var(--el-border-color-darker);
     border-radius: 2px;
   }
 }
@@ -589,20 +589,20 @@ onMounted(async () => {
 
 .add-task-btn {
   width: 100%;
-  border: 1px dashed #dcdfe6 !important;
-  color: #909399;
+  border: 1px dashed var(--el-border-color) !important;
+  color: var(--el-text-color-secondary);
   border-radius: 6px;
   padding: 6px;
 
   &:hover {
-    border-color: #409eff !important;
-    color: #409eff;
+    border-color: var(--el-color-primary) !important;
+    color: var(--el-color-primary);
   }
 }
 
 // ---------- 任务详情抽屉 ----------
 .task-description {
-  background: #f5f7fa;
+  background: var(--el-fill-color-light);
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 16px;
@@ -610,13 +610,13 @@ onMounted(async () => {
   h4 {
     margin: 0 0 8px 0;
     font-size: 14px;
-    color: #303133;
+    color: var(--el-text-color-primary);
   }
 
   p {
     margin: 0;
     font-size: 13px;
-    color: #606266;
+    color: var(--el-text-color-regular);
     line-height: 1.6;
     white-space: pre-wrap;
   }
