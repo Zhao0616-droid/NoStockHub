@@ -15,24 +15,9 @@
           style="width:280px"
           @change="applyDateRange"
         />
-        <el-dropdown @command="handleExport">
-          <el-button type="primary">
-            导出报表 <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-          </el-button>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item command="pdf">
-                <el-icon><Document /></el-icon> PDF
-              </el-dropdown-item>
-              <el-dropdown-item command="excel">
-                <el-icon><Grid /></el-icon> Excel
-              </el-dropdown-item>
-              <el-dropdown-item command="csv">
-                <el-icon><List /></el-icon> CSV
-              </el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
+        <el-button type="primary" @click="openExportDialog">
+          导出报表
+        </el-button>
       </div>
     </div>
 
@@ -193,6 +178,26 @@
       </el-table>
       <el-empty v-if="!reports.length" description="暂无报表历史" />
     </el-card>
+
+    <!-- 导出报表对话框 -->
+    <el-dialog v-model="showExportDialog" title="导出报表" width="420px" :close-on-click-modal="false">
+      <el-form :model="exportForm" label-width="80px">
+        <el-form-item label="报表名称" required>
+          <el-input v-model="exportForm.name" placeholder="请输入报表名称" />
+        </el-form-item>
+        <el-form-item label="导出格式" required>
+          <el-select v-model="exportForm.format" style="width:100%">
+            <el-option label="CSV" value="csv" />
+            <el-option label="Excel" value="excel" />
+            <el-option label="PDF" value="pdf" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showExportDialog = false">取消</el-button>
+        <el-button type="primary" :loading="exporting" @click="handleExport">生成报表</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -200,7 +205,7 @@
 import { ref, reactive, computed, watch, nextTick, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowDown, Document, Grid, List, CircleCheck, Timer, TrendCharts, Coin, User } from '@element-plus/icons-vue'
+import { CircleCheck, Timer, TrendCharts, Coin, User } from '@element-plus/icons-vue'
 import {
   StatCard, ProgressRing, BurndownChart,
   TaskDistribution, TrendChart
@@ -427,8 +432,24 @@ async function loadReports() {
   } catch { /* keep empty */ }
 }
 
-// --------------- Methods ---------------
-async function handleExport(format) {
+// --------------- 导出报表 ---------------
+const showExportDialog = ref(false)
+const exporting = ref(false)
+const exportForm = reactive({ name: '', format: 'csv' })
+
+function openExportDialog() {
+  const tabLabel = { overview: '概览', tasks: '任务统计', worklog: '工时分析', burndown: '燃尽图' }[activeTab.value] || '项目'
+  exportForm.name = `${tabLabel}报表_${new Date().toISOString().slice(0, 10)}`
+  exportForm.format = 'csv'
+  showExportDialog.value = true
+}
+
+async function handleExport() {
+  if (!exportForm.name.trim()) {
+    ElMessage.warning('请输入报表名称')
+    return
+  }
+  exporting.value = true
   try {
     const typeMap = {
       overview: 'progress',
@@ -436,21 +457,40 @@ async function handleExport(format) {
       worklog: 'worklog_summary',
       burndown: 'burndown'
     }
-    const name = `${currentSprint.value?.name || '项目'}报表`
-    await reportAPI.generate({
+    const res = await reportAPI.generate({
       type: typeMap[activeTab.value] || 'progress',
       project_id: route.params.id,
-      name,
+      name: exportForm.name.trim(),
       parameters: {
         date_from: dateRange.value[0]?.toISOString?.()?.slice(0, 10),
         date_to: dateRange.value[1]?.toISOString?.()?.slice(0, 10),
-        format
+        format: exportForm.format
       }
     })
-    ElMessage.success(`${format.toUpperCase()} 报表生成请求已提交`)
-    await loadReports()
+    showExportDialog.value = false
+    // 同步生成完成后自动下载
+    if (res.status === 'ready') {
+      ElMessage.success('报表已生成')
+      await loadReports()
+      try {
+        const blob = await reportAPI.download(res.id)
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${exportForm.name}.${exportForm.format}`
+        a.click()
+        URL.revokeObjectURL(url)
+      } catch {
+        // 下载失败，用户可从历史列表手动下载
+      }
+    } else {
+      ElMessage.success('报表生成请求已提交')
+      await loadReports()
+    }
   } catch (e) {
     ElMessage.error('生成报表失败')
+  } finally {
+    exporting.value = false
   }
 }
 

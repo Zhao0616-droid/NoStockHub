@@ -43,12 +43,17 @@ class ReportViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         report = serializer.save(generated_by=request.user)
         try:
-            generate_report_task.delay(str(report.id))
+            generate_report_task(str(report.id))
         except Exception:
-            logger.warning("Failed to dispatch report generation task for report %s", report.id, exc_info=True)
+            logger.warning("Failed to generate report %s", report.id, exc_info=True)
+            return Response(
+                {'detail': '报表生成失败，请重试'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        report.refresh_from_db()
         return Response(
             ReportSerializer(report).data,
-            status=status.HTTP_202_ACCEPTED,
+            status=status.HTTP_201_CREATED,
         )
 
     def destroy(self, request, *args, **kwargs):
