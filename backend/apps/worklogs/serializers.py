@@ -29,4 +29,4 @@ class HourlyRateSerializer(serializers.ModelSerializer):
         extra_kwargs = {'user': {'required': False}}
 
     def get_user_summary(self, obj):
-        return {'id': str(obj.user_id), 'username': obj.user.username}
+        return {'id': str(obj.user_id), 'username': obj.user.username, 'avatar': getattr(obj.user, 'avatar', '')}

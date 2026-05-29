@@ -11,6 +11,7 @@ def user_summary(user):
         'id': str(user.id),
         'username': getattr(user, 'username', ''),
         'email': getattr(user, 'email', ''),
+        'avatar': getattr(user, 'avatar', ''),
     }
 
 

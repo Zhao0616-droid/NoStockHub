@@ -6,7 +6,7 @@
     </div>
     <p class="task-title">{{ task.title }}</p>
     <div class="card-bottom">
-      <el-avatar :size="20">{{ task.assignee?.username?.[0] }}</el-avatar>
+      <el-avatar :size="20" :src="task.assignee?.avatar">{{ task.assignee?.username?.[0] }}</el-avatar>
       <span class="assignee-name">{{ task.assignee?.username || '未分配' }}</span>
     </div>
   </div>

@@ -116,7 +116,7 @@
       <el-table-column label="负责人" width="100">
         <template #default="{ row }">
           <span class="assignee-cell">
-            <el-avatar :size="20">{{ row.assignee?.username?.[0] || '?' }}</el-avatar>
+            <el-avatar :size="20" :src="row.assignee?.avatar">{{ row.assignee?.username?.[0] || '?' }}</el-avatar>
             {{ row.assignee?.username || '未分配' }}
           </span>
         </template>

@@ -489,11 +489,13 @@ function formatTag(format) {
 async function loadAllData() {
   loading.value = true
   try {
+    const pid = route.params.id
     const [tasksRes, worklogsRes, sprintsRes] = await Promise.all([
-      taskAPI.list({ project_id: route.params.id, page_size: 1000 }).catch(() => ({ results: [] })),
-      worklogAPI.list({ project_id: route.params.id, page_size: 1000 }).catch(() => ({ results: [] })),
-      sprintAPI.list({ project_id: route.params.id, page_size: 100 }).catch(() => ({ results: [] })),
+      taskAPI.list({ project_id: pid, page_size: 1000 }).catch(e => { console.error('tasks fetch error', e); return { results: [] } }),
+      worklogAPI.list({ project_id: pid, page_size: 1000 }).catch(e => { console.error('worklogs fetch error', e); return { results: [] } }),
+      sprintAPI.list({ project_id: pid, page_size: 100 }).catch(e => { console.error('sprints fetch error', e); return { results: [] } }),
     ])
+    console.log('report data loaded:', { tasksCount: (tasksRes.results || tasksRes || []).length, pid })
     allTasks.value = tasksRes.results || tasksRes || []
     allWorklogs.value = worklogsRes.results || worklogsRes || []
     sprintList.value = (sprintsRes.results || sprintsRes || []).map(s => ({

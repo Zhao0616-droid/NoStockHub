@@ -43,7 +43,7 @@
       <el-col :span="12">
         <el-card header="团队成员">
           <div v-for="m in members" :key="m.id" class="member-row">
-            <el-avatar :size="28">{{ m.user?.username?.[0] }}</el-avatar>
+            <el-avatar :size="28" :src="m.user?.avatar">{{ m.user?.username?.[0] }}</el-avatar>
             <span>{{ m.user?.username }}</span>
             <el-tag size="small">{{ roleLabel(m.role) }}</el-tag>
           </div>
