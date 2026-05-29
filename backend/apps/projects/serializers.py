@@ -1,6 +1,5 @@
 from django.contrib.auth import get_user_model
 from django.apps import apps
-from django.db.models import Avg
 from rest_framework import serializers
 
 from .models import Milestone, Project, ProjectMember, ProjectTemplate
@@ -145,7 +144,11 @@ class ProjectSerializer(serializers.ModelSerializer):
 
         if not hasattr(Task, 'project'):
             return None
-        return Task.objects.filter(project=obj).aggregate(avg_progress=Avg('progress'))['avg_progress']
+        total = Task.objects.filter(project=obj).count()
+        if total == 0:
+            return 0
+        done = Task.objects.filter(project=obj, status='done').count()
+        return round(done / total * 100)
 
     def get_progress(self, obj):
         if obj.status == Project.Status.COMPLETED:

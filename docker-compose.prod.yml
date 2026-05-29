@@ -82,6 +82,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
+    volumes:
+      - media_data:/app/media:ro
     ports:
       - "80:80"
     restart: always

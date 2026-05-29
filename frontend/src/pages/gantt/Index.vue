@@ -148,6 +148,7 @@ let chartInstance = null
 
 const BAR_HEIGHT = 24
 const dayMs = 1000 * 60 * 60 * 24
+const hourMs = 1000 * 60 * 60
 
 function renderChart() {
   if (!chartRef.value) return
@@ -235,10 +236,17 @@ function renderChart() {
       type: 'time',
       min: viewStartTime,
       max: viewEndTime,
+      minInterval: hourMs,
+      maxInterval: viewMode.value === 'day' ? hourMs * 6 : viewMode.value === 'week' ? dayMs : dayMs * 7,
       axisLabel: {
         formatter: (val) => {
           const d = new Date(val)
-          return `${d.getMonth() + 1}/${d.getDate()}`
+          const M = d.getMonth() + 1
+          const D = d.getDate()
+          const h = String(d.getHours()).padStart(2, '0')
+          if (viewMode.value === 'day') return `${h}:00`
+          if (viewMode.value === 'week') return `${M}/${D} 周${'日一二三四五六'[d.getDay()]}`
+          return `${M}/${D}`
         }
       },
       splitLine: { show: true, lineStyle: { color: '#ebeef5', type: 'dashed' } }

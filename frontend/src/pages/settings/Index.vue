@@ -165,6 +165,11 @@ import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import { authAPI, notificationAPI } from '@/api'
 
+function formatDRFErrors(data) {
+  if (!data || typeof data !== 'object') return null
+  return Object.values(data).flat().join('; ')
+}
+
 const auth = useAuthStore()
 const themeStore = useThemeStore()
 const saving = ref(false)
@@ -241,7 +246,7 @@ async function saveProfile() {
     })
     ElMessage.success('个人资料保存成功')
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '保存失败')
+    ElMessage.error(error.response?.data?.detail || formatDRFErrors(error.response?.data) || '保存失败')
   } finally {
     saving.value = false
   }

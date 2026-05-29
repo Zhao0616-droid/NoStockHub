@@ -54,7 +54,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             return [IsAuthenticated(), IsProjectManager()]
         if self.action == 'members' and self.request.method == 'POST':
             return [IsAuthenticated(), IsProjectManager()]
-        if self.action == 'milestones' and self.request.method == 'POST':
+        if self.action == 'milestones' and self.request.method in ['POST', 'PATCH', 'DELETE']:
             return [IsAuthenticated(), IsProjectManager()]
         if self.action in ['retrieve', 'members', 'milestones', 'gantt']:
             return [IsAuthenticated(), IsProjectMember()]
@@ -112,7 +112,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         member.save(update_fields=['role'])
         return Response(ProjectMemberSerializer(member).data)
 
-    @action(detail=True, methods=['get', 'post'], url_path='milestones')
+    @action(detail=True, methods=['get', 'post', 'patch', 'delete'], url_path='milestones')
     def milestones(self, request, pk=None):
         project = self.get_object()
         if request.method == 'GET':
@@ -120,10 +120,30 @@ class ProjectViewSet(viewsets.ModelViewSet):
             serializer = MilestoneSerializer(queryset, many=True)
             return Response(serializer.data)
 
-        serializer = MilestoneCreateSerializer(data=request.data, context={'project': project})
+        if request.method == 'POST':
+            serializer = MilestoneCreateSerializer(data=request.data, context={'project': project})
+            serializer.is_valid(raise_exception=True)
+            milestone = serializer.save(project=project)
+            return Response(MilestoneSerializer(milestone).data, status=status.HTTP_201_CREATED)
+
+        # PATCH / DELETE require milestone_id
+        milestone_id = request.data.get('milestone_id')
+        if not milestone_id:
+            return Response({'detail': 'milestone_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            milestone = project.milestones.get(id=milestone_id)
+        except Milestone.DoesNotExist:
+            return Response({'detail': 'Milestone not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == 'DELETE':
+            milestone.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        # PATCH
+        serializer = MilestoneCreateSerializer(milestone, data=request.data, partial=True, context={'project': project})
         serializer.is_valid(raise_exception=True)
-        milestone = serializer.save(project=project)
-        return Response(MilestoneSerializer(milestone).data, status=status.HTTP_201_CREATED)
+        milestone = serializer.save()
+        return Response(MilestoneSerializer(milestone).data)
 
     @action(detail=True, methods=['get'], url_path='gantt')
     def gantt(self, request, pk=None):
@@ -282,14 +302,14 @@ def dashboard(request):
     recent_projects = projects.order_by('-created_at')[:5]
     recent_projects_data = []
     for p in recent_projects:
-        # 计算进度
+        # 计算进度: done / total
         if p.status == Project.Status.COMPLETED:
             progress = 100
         else:
             try:
-                from django.db.models import Avg
-                avg = Task.objects.filter(project=p).aggregate(avg_progress=Avg('progress'))['avg_progress']
-                progress = round(avg) if avg else 0
+                total = Task.objects.filter(project=p).count()
+                done = Task.objects.filter(project=p, status='done').count()
+                progress = round(done / total * 100) if total > 0 else 0
             except Exception:
                 progress = 0
         recent_projects_data.append({

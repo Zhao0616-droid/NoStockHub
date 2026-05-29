@@ -39,10 +39,11 @@ class KanbanBoardViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['update', 'partial_update', 'destroy',
-                           'manage_columns', 'update_column', 'delete_column',
-                           'move_task']:
+                           'update_column', 'delete_column', 'move_task']:
             return [IsAuthenticated(), IsProjectManager()]
-        if self.action in ['retrieve', 'columns_list']:
+        if self.action == 'manage_columns' and self.request.method == 'POST':
+            return [IsAuthenticated(), IsProjectManager()]
+        if self.action in ['retrieve', 'manage_columns']:
             return [IsAuthenticated(), IsProjectMember()]
         return [IsAuthenticated()]
 
@@ -63,26 +64,6 @@ class KanbanBoardViewSet(viewsets.ModelViewSet):
         board = self.get_object()
 
         if request.method == 'GET':
-            columns = board.columns.order_by('order')
-            # Auto-assign unassigned project tasks to first column
-            first_col = columns.first()
-            if first_col:
-                existing_task_ids = set()
-                for col in columns:
-                    existing_task_ids.update(tc.task_id for tc in col.task_columns.all())
-                Task = apps.get_model('tasks', 'Task')
-                if Task is not None:
-                    project_tasks = Task.objects.filter(project=board.project).values_list('id', flat=True)
-                    next_order = first_col.task_columns.count()
-                    for task_id in project_tasks:
-                        if task_id not in existing_task_ids:
-                            TaskColumn.objects.create(
-                                task_id=task_id,
-                                column=first_col,
-                                order=next_order,
-                            )
-                            next_order += 1
-            # Refresh columns after potential inserts
             columns = board.columns.order_by('order')
             return Response(KanbanColumnSerializer(columns, many=True).data)
 

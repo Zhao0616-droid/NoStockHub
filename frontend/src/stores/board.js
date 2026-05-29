@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { boardAPI, taskAPI } from '@/api'
+import { useTaskStore } from '@/stores/task'
 
 // 看板列名 → 任务状态码
 const COLUMN_STATUS_MAP = {
@@ -33,8 +34,14 @@ export const useBoardStore = defineStore('board', () => {
     try {
       const res = await boardAPI.detail(boardId)
       currentBoard.value = res
-      const cols = await boardAPI.columns(boardId)
-      columns.value = (cols.results || cols).map(c => ({ ...c, tasks: c.tasks || [] }))
+      try {
+        const cols = await boardAPI.columns(boardId)
+        columns.value = (cols.results || cols).map(c => ({ ...c, tasks: c.tasks || [] }))
+      } catch {
+        // fallback: use nested columns from board detail response
+        const nested = res.columns || res.kanban_columns || []
+        columns.value = nested.map(c => ({ ...c, tasks: c.tasks || [] }))
+      }
     } finally {
       loading.value = false
     }
@@ -98,6 +105,10 @@ export const useBoardStore = defineStore('board', () => {
     try {
       await boardAPI.moveTask(boardId, { task_id: taskId, target_column_id: toColumnId, order })
       await taskAPI.updateStatus(taskId, statusCode)
+      // 同步到 taskStore
+      const taskStore = useTaskStore()
+      const t = taskStore.tasks.find(t => t.id === taskId)
+      if (t) t.status = statusCode
     } catch {
       await fetchBoard(boardId) // 回滚
     }

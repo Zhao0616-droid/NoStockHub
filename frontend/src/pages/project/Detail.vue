@@ -51,14 +51,27 @@
         </el-card>
       </el-col>
       <el-col :span="12">
-        <el-card header="里程碑">
+        <el-card>
+          <template #header>
+            <div class="card-header-row">
+              <span>里程碑</span>
+              <el-button size="small" type="primary" text @click="openMilestoneDialog()">+ 添加</el-button>
+            </div>
+          </template>
           <div v-for="m in milestones" :key="m.id" class="milestone-item">
-            <el-icon :color="m.status === 'completed' ? '#67C23A' : '#909399'">
+            <el-icon
+              :color="m.status === 'completed' ? '#67C23A' : '#909399'"
+              style="cursor:pointer"
+              @click="toggleMilestone(m)"
+            >
               <component :is="m.status === 'completed' ? 'CircleCheckFilled' : 'CircleCheck'" />
             </el-icon>
-            <span>{{ m.name }}</span>
+            <span :class="{ 'milestone-done': m.status === 'completed' }">{{ m.name }}</span>
             <span class="milestone-date">{{ m.due_date }}</span>
+            <el-button text size="small" @click="openMilestoneDialog(m)"><el-icon><Edit /></el-icon></el-button>
+            <el-button text size="small" type="danger" @click="handleDeleteMilestone(m)"><el-icon><Delete /></el-icon></el-button>
           </div>
+          <el-empty v-if="!milestones.length" description="暂无里程碑" :image-size="40" />
         </el-card>
       </el-col>
     </el-row>
@@ -134,6 +147,31 @@
         <el-button type="primary" @click="inviteMember" :loading="inviting">邀请</el-button>
       </template>
     </el-dialog>
+
+    <!-- 里程碑对话框 -->
+    <el-dialog v-model="showMilestoneDialog" :title="editingMilestone ? '编辑里程碑' : '添加里程碑'" width="420px" :close-on-click-modal="false">
+      <el-form ref="milestoneFormRef" :model="milestoneForm" :rules="milestoneRules" label-width="80px">
+        <el-form-item label="名称" prop="name">
+          <el-input v-model="milestoneForm.name" placeholder="里程碑名称" />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="milestoneForm.description" type="textarea" :rows="2" placeholder="描述（选填）" />
+        </el-form-item>
+        <el-form-item label="截止日期" prop="due_date">
+          <el-date-picker v-model="milestoneForm.due_date" type="date" value-format="YYYY-MM-DD" style="width:100%" placeholder="选择日期" />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="milestoneForm.status" style="width:100%">
+            <el-option label="进行中" value="pending" />
+            <el-option label="已完成" value="completed" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showMilestoneDialog = false">取消</el-button>
+        <el-button type="primary" @click="saveMilestone" :loading="savingMilestone">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -141,6 +179,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Edit, Delete } from '@element-plus/icons-vue'
 import { useProjectStore } from '@/stores/project'
 import { projectAPI, taskAPI, userAPI } from '@/api'
 import StatusTag from '@/components/common/StatusTag.vue'
@@ -286,6 +325,81 @@ function roleLabel(role) {
   return { manager: '管理者', member: '成员', viewer: '观察者' }[role] || role
 }
 
+// --------------- 里程碑 ---------------
+const showMilestoneDialog = ref(false)
+const savingMilestone = ref(false)
+const editingMilestone = ref(null)
+const milestoneFormRef = ref(null)
+const milestoneForm = reactive({ name: '', description: '', due_date: '', status: 'pending' })
+const milestoneRules = {
+  name: [{ required: true, message: '请输入里程碑名称', trigger: 'blur' }],
+  due_date: [{ required: true, message: '请选择截止日期', trigger: 'change' }],
+}
+
+function openMilestoneDialog(milestone = null) {
+  editingMilestone.value = milestone
+  if (milestone) {
+    Object.assign(milestoneForm, {
+      name: milestone.name || '',
+      description: milestone.description || '',
+      due_date: milestone.due_date || '',
+      status: milestone.status || 'pending',
+    })
+  } else {
+    milestoneForm.name = ''
+    milestoneForm.description = ''
+    milestoneForm.due_date = ''
+    milestoneForm.status = 'pending'
+  }
+  showMilestoneDialog.value = true
+}
+
+async function saveMilestone() {
+  const valid = await milestoneFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+  savingMilestone.value = true
+  try {
+    const payload = { ...milestoneForm }
+    if (editingMilestone.value) {
+      payload.milestone_id = editingMilestone.value.id
+      await projectAPI.updateMilestone(id, payload)
+      ElMessage.success('里程碑已更新')
+    } else {
+      await projectAPI.createMilestone(id, payload)
+      ElMessage.success('里程碑已创建')
+    }
+    showMilestoneDialog.value = false
+    const res = await projectAPI.milestones(id)
+    milestones.value = res.results || res || []
+  } catch (e) {
+    ElMessage.error(formatErrors(e.response?.data) || '保存失败')
+  } finally {
+    savingMilestone.value = false
+  }
+}
+
+async function toggleMilestone(m) {
+  const newStatus = m.status === 'completed' ? 'pending' : 'completed'
+  try {
+    await projectAPI.updateMilestone(id, { milestone_id: m.id, status: newStatus })
+    m.status = newStatus
+    ElMessage.success(newStatus === 'completed' ? '里程碑已完成' : '里程碑已重新打开')
+  } catch {
+    ElMessage.error('操作失败')
+  }
+}
+
+async function handleDeleteMilestone(m) {
+  try {
+    await ElMessageBox.confirm(`确定删除里程碑「${m.name}」？`, '确认删除', { type: 'warning' })
+    await projectAPI.deleteMilestone(id, m.id)
+    milestones.value = milestones.value.filter(x => x.id !== m.id)
+    ElMessage.success('里程碑已删除')
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('删除失败')
+  }
+}
+
 const progressColor = computed(() => {
   const p = project.value?.progress || 0
   return p < 30 ? '#F56C6C' : p < 80 ? '#409EFF' : '#67C23A'
@@ -316,6 +430,9 @@ onMounted(async () => {
 <style scoped lang="scss">
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .member-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
-.milestone-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
-.milestone-date { font-size: 12px; color: #909399; margin-left: auto; }
+.card-header-row { display: flex; justify-content: space-between; align-items: center; }
+.milestone-item { display: flex; align-items: center; gap: 6px; padding: 6px 0; }
+.milestone-item + .milestone-item { border-top: 1px solid #f0f0f0; }
+.milestone-date { font-size: 12px; color: #909399; margin-left: auto; margin-right: 4px; }
+.milestone-done { text-decoration: line-through; color: #909399; }
 </style>

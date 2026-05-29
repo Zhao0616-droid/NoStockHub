@@ -201,6 +201,10 @@ import { projectAPI } from '@/api'
 import TaskDialog from '@/components/common/TaskDialog.vue'
 import PriorityTag from '@/components/common/PriorityTag.vue'
 
+const route = useRoute()
+const projectId = route.params.id
+const taskStore = useTaskStore()
+
 const statusOptions = [
   { label: '待办', value: 'todo' },
   { label: '进行中', value: 'in_progress' },
@@ -212,14 +216,11 @@ const statusOptions = [
 async function handleStatusChange(row, newStatus) {
   try {
     await taskStore.updateStatus(row.id, newStatus)
-  } catch {
-    ElMessage.error('状态更新失败')
+  } catch (e) {
+    const msg = e?.response?.data?.detail || e?.response?.data?.error || '状态更新失败'
+    ElMessage.error(msg)
   }
 }
-
-const route = useRoute()
-const projectId = route.params.id
-const taskStore = useTaskStore()
 
 // --------------- 筛选 ---------------
 const searchText = ref('')

@@ -26,21 +26,22 @@
             <el-select
               v-model="selectedTaskId"
               filterable
-              remote
-              reserve-keyword
-              placeholder="搜索任务添加到冲刺"
-              :remote-method="searchAvailableTasks"
-              :loading="searchingTasks"
+              placeholder="选择任务添加到冲刺"
+              :loading="loadingTasks"
               clearable
-              style="width:260px"
+              style="width:300px"
               @change="addTaskToSprint"
+              @visible-change="onTaskSelectVisible"
             >
               <el-option
                 v-for="t in availableTasks"
                 :key="t.id"
-                :label="t.title"
+                :label="`${t.title} (${statusLabels[t.status] || t.status})`"
                 :value="t.id"
-              />
+              >
+                <span>{{ t.title }}</span>
+                <span style="float:right;color:#909399;font-size:12px;margin-left:8px">{{ statusLabels[t.status] || t.status }}</span>
+              </el-option>
             </el-select>
           </div>
           <div class="sprint-actions">
@@ -122,8 +123,12 @@ const rules = {
   name: [{ required: true, message: '请输入冲刺名称', trigger: 'blur' }]
 }
 
-const activeSprint = computed(() => sprints.value.find(s => s.status === 'active'))
-const plannedSprints = computed(() => sprints.value.filter(s => s.status !== 'active'))
+const activeSprints = computed(() => sprints.value.filter(s => s.status === 'active'))
+const activeSprint = computed(() => activeSprints.value[0] || null)
+const plannedSprints = computed(() => {
+  const activeId = activeSprint.value?.id
+  return sprints.value.filter(s => s.id !== activeId)
+})
 
 // --- Burndown ---
 const burndownDates = ref([])
@@ -217,26 +222,25 @@ async function handleDeleteSprint(sprint) {
   }
 }
 
-// ----- 搜索待添加任务 -----
+// ----- 任务列表选择 -----
 const selectedTaskId = ref('')
 const availableTasks = ref([])
-const searchingTasks = ref(false)
+const loadingTasks = ref(false)
 
-async function searchAvailableTasks(query) {
-  if (!query || query.trim().length < 1) {
-    availableTasks.value = []
-    return
-  }
-  searchingTasks.value = true
+const statusLabels = { todo: '待办', in_progress: '进行中', review: '审核中', done: '已完成', blocked: '阻塞' }
+
+async function onTaskSelectVisible(visible) {
+  if (!visible) return
+  loadingTasks.value = true
   try {
-    const res = await taskAPI.list({ project_id: projectId.value, search: query.trim() })
+    const res = await taskAPI.list({ project_id: projectId.value, page_size: 1000 })
     const all = res.results || res || []
     const sprintTaskIds = new Set(sprintTasks.value.map(t => t.id))
-    availableTasks.value = all.filter(t => !sprintTaskIds.has(t.id)).slice(0, 15)
+    availableTasks.value = all.filter(t => !sprintTaskIds.has(t.id))
   } catch {
     availableTasks.value = []
   } finally {
-    searchingTasks.value = false
+    loadingTasks.value = false
   }
 }
 

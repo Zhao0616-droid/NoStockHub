@@ -253,7 +253,7 @@ const filteredTasks = computed(() => {
   if (!start || !end) return allTasks.value
   const startStr = start instanceof Date ? start.toISOString().slice(0, 10) : String(start).slice(0, 10)
   const endStr = end instanceof Date ? end.toISOString().slice(0, 10) : String(end).slice(0, 10)
-  return filteredTasks.value.filter(t => {
+  return allTasks.value.filter(t => {
     const cd = t.created_at ? t.created_at.slice(0, 10) : ''
     const dd = t.due_date || ''
     return (cd >= startStr && cd <= endStr) || (dd >= startStr && dd <= endStr)

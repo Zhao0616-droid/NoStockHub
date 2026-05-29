@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { taskAPI } from '@/api'
+import { useBoardStore } from '@/stores/board'
 
 // --------------- mock data ---------------
 let _mockTaskId = 0
@@ -149,6 +150,12 @@ export const useTaskStore = defineStore('task', () => {
     const t = tasks.value.find(t => t.id === id)
     if (t) t.status = status
     if (currentTask.value?.id === id) currentTask.value.status = status
+    // 同步到 boardStore
+    const boardStore = useBoardStore()
+    for (const col of boardStore.columns) {
+      const bt = col.tasks?.find(t => t.id === id)
+      if (bt) { bt.status = status; break }
+    }
   }
 
   async function deleteTask(id) {

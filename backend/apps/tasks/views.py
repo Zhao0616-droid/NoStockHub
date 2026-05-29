@@ -69,18 +69,10 @@ class TaskViewSet(viewsets.ModelViewSet):
         new_status = serializer.validated_data['status']
         old_status = task.status
         
-        # 简单的状态机校验 (可根据 db.md扩展)
-        valid_transitions = {
-            'todo': ['in_progress', 'blocked'],
-            'in_progress': ['review', 'blocked', 'todo'],
-            'review': ['done', 'in_progress'],
-            'blocked': ['todo', 'in_progress'],
-            'done': []
-        }
-        
-        if new_status not in valid_transitions.get(old_status, []):
+        # 允许任意状态流转 (done 只能回退到 in_progress)
+        if old_status == 'done' and new_status != 'in_progress':
             return Response(
-                {"error": f"无法从 {old_status} 流转到 {new_status}"}, 
+                {"error": f"已完成的任务只能回退到进行中"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

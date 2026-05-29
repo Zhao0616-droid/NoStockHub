@@ -68,6 +68,8 @@ class SprintViewSet(viewsets.ModelViewSet):
             )
         sprint.status = Sprint.Status.ACTIVE
         sprint.save(update_fields=['status'])
+        # Deactivate other active sprints in the same project
+        Sprint.objects.filter(project=sprint.project, status=Sprint.Status.ACTIVE).exclude(id=sprint.id).update(status=Sprint.Status.COMPLETED)
         return Response(SprintSerializer(sprint).data)
 
     @action(detail=True, methods=['post'])
