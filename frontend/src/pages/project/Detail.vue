@@ -103,8 +103,24 @@
     <!-- 邀请成员对话框 -->
     <el-dialog v-model="showInviteDialog" title="邀请成员" width="440px" :close-on-click-modal="false">
       <el-form ref="inviteFormRef" :model="inviteForm" :rules="inviteRules" label-width="80px">
-        <el-form-item label="用户ID" prop="user_id">
-          <el-input v-model="inviteForm.user_id" placeholder="输入用户ID (UUID)" />
+        <el-form-item label="用户名" prop="username">
+          <el-select
+            v-model="inviteForm.username"
+            filterable
+            remote
+            reserve-keyword
+            placeholder="输入用户名搜索"
+            :remote-method="searchUsers"
+            :loading="searchingUsers"
+            style="width:100%"
+          >
+            <el-option
+              v-for="u in userOptions"
+              :key="u.id"
+              :label="`${u.username} (${u.email})`"
+              :value="u.username"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="角色" prop="role">
           <el-select v-model="inviteForm.role" style="width:100%">
@@ -126,7 +142,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useProjectStore } from '@/stores/project'
-import { projectAPI, taskAPI } from '@/api'
+import { projectAPI, taskAPI, userAPI } from '@/api'
 import StatusTag from '@/components/common/StatusTag.vue'
 
 const route = useRoute()
@@ -189,16 +205,35 @@ async function saveProject() {
 // --------------- 邀请成员 ---------------
 const showInviteDialog = ref(false)
 const inviteFormRef = ref(null)
-const inviteForm = reactive({ user_id: '', role: 'member' })
+const inviteForm = reactive({ username: '', role: 'member' })
 const inviteRules = {
-  user_id: [{ required: true, message: '请输入用户ID', trigger: 'blur' }],
+  username: [{ required: true, message: '请选择用户', trigger: 'change' }],
   role: [{ required: true, message: '请选择角色', trigger: 'change' }],
 }
+const searchingUsers = ref(false)
+const userOptions = ref([])
 
 function openInviteDialog() {
-  inviteForm.user_id = ''
+  inviteForm.username = ''
   inviteForm.role = 'member'
+  userOptions.value = []
   showInviteDialog.value = true
+}
+
+async function searchUsers(query) {
+  if (!query || query.trim().length < 1) {
+    userOptions.value = []
+    return
+  }
+  searchingUsers.value = true
+  try {
+    const res = await userAPI.search(query.trim())
+    userOptions.value = res || []
+  } catch {
+    userOptions.value = []
+  } finally {
+    searchingUsers.value = false
+  }
 }
 
 async function inviteMember() {
@@ -206,7 +241,7 @@ async function inviteMember() {
   if (!valid) return
   inviting.value = true
   try {
-    await projectAPI.addMember(id, { user_id: inviteForm.user_id, role: inviteForm.role })
+    await projectAPI.addMember(id, { username: inviteForm.username, role: inviteForm.role })
     ElMessage.success('成员已邀请')
     showInviteDialog.value = false
     const res = await projectAPI.members(id)
@@ -238,7 +273,7 @@ function formatErrors(data) {
   if (typeof data === 'string') return data
   return Object.entries(data)
     .map(([k, v]) => {
-      const label = { user_id: '用户ID', non_field_errors: '' }[k] || k
+      const label = { user_id: '用户ID', username: '用户名', non_field_errors: '' }[k] || k
       const msg = Array.isArray(v) ? v.join(', ') : v
       return label ? `${label}: ${msg}` : msg
     })

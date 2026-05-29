@@ -41,21 +41,34 @@ class ProjectMemberSerializer(serializers.ModelSerializer):
 
 
 class MemberAddSerializer(serializers.Serializer):
-    user_id = serializers.UUIDField()
+    user_id = serializers.UUIDField(required=False)
+    username = serializers.CharField(required=False)
     role = serializers.ChoiceField(choices=ProjectMember.Role.choices, default=ProjectMember.Role.MEMBER)
 
-    def validate_user_id(self, value):
-        User = get_user_model()
-        try:
-            return User.objects.get(id=value)
-        except User.DoesNotExist as exc:
-            raise serializers.ValidationError('User does not exist.') from exc
-
     def validate(self, attrs):
+        User = get_user_model()
         project = self.context['project']
-        user = attrs['user_id']
+
+        username = attrs.get('username')
+        user_id = attrs.get('user_id')
+
+        if not username and not user_id:
+            raise serializers.ValidationError({'user_id': '请输入用户ID或用户名'})
+
+        if username:
+            try:
+                user = User.objects.get(username=username)
+            except User.DoesNotExist:
+                raise serializers.ValidationError({'username': '用户不存在'})
+        else:
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                raise serializers.ValidationError({'user_id': '用户不存在'})
+
         if ProjectMember.objects.filter(project=project, user=user).exists():
-            raise serializers.ValidationError('User is already a project member.')
+            raise serializers.ValidationError({'user_id': '该用户已是项目成员'})
+
         attrs['user'] = user
         return attrs
 

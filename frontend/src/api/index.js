@@ -129,6 +129,11 @@ export const fileAPI = {
   delete: (id) => request.delete(`/files/${id}/`),
 }
 
+// 用户
+export const userAPI = {
+  search: (q) => request.get('/auth/users/search/', { params: { q } }),
+}
+
 // 仪表盘
 export const dashboardAPI = {
   summary: () => request.get('/dashboard/'),

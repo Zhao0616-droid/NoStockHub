@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from django.contrib.auth import get_user_model
 from .serializers import RegisterSerializer, LoginSerializer, UserSerializer, ChangePasswordSerializer
 
 
@@ -72,6 +73,25 @@ class EnableTwoFactorView(APIView):
         request.user.two_factor_enabled = True
         request.user.save(update_fields=['two_factor_enabled'])
         return Response({'detail': '双因素认证已启用', 'two_factor_enabled': True})
+
+
+class UserSearchView(APIView):
+    """用户搜索（按用户名/邮箱）"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        q = request.query_params.get('q', '').strip()
+        if not q or len(q) < 1:
+            return Response([])
+        User = get_user_model()
+        users = User.objects.filter(
+            username__icontains=q
+        ) | User.objects.filter(email__icontains=q)
+        users = users[:20]
+        return Response([
+            {'id': str(u.id), 'username': u.username, 'email': u.email}
+            for u in users
+        ])
 
 
 class DisableTwoFactorView(APIView):
