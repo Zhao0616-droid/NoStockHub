@@ -92,7 +92,7 @@ const viewModes = [
   { label: '月', value: 'month' }
 ]
 
-const viewModeDays = computed(() => ({ day: 1, week: 7, month: 31 }[viewMode.value]))
+const viewModeDays = computed(() => ({ day: 14, week: 35, month: 90 }[viewMode.value]))
 
 const dateOffset = ref(0)
 
@@ -237,14 +237,13 @@ function renderChart() {
       min: viewStartTime,
       max: viewEndTime,
       minInterval: hourMs,
-      maxInterval: viewMode.value === 'day' ? hourMs * 6 : viewMode.value === 'week' ? dayMs : dayMs * 7,
+      maxInterval: viewMode.value === 'day' ? dayMs : viewMode.value === 'week' ? dayMs * 2 : dayMs * 7,
       axisLabel: {
         formatter: (val) => {
           const d = new Date(val)
           const M = d.getMonth() + 1
           const D = d.getDate()
-          const h = String(d.getHours()).padStart(2, '0')
-          if (viewMode.value === 'day') return `${h}:00`
+          if (viewMode.value === 'day') return `${M}/${D}`
           if (viewMode.value === 'week') return `${M}/${D} 周${'日一二三四五六'[d.getDay()]}`
           return `${M}/${D}`
         }

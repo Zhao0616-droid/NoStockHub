@@ -216,8 +216,17 @@
 | 11 | 个人资料修改失败 | PUT 缺少 read_only_fields → username 校验失败 | 增加 `read_only_fields` + 前端 PUT → PATCH | `backend/apps/accounts/serializers.py`、`frontend/src/api/index.js` |
 | 12 | 文件上传不持久 | Nginx `/media/` 使用 proxy_pass，容器重建后丢失 | 改为 `alias` 直接文件系统服务 + docker-compose 挂载 `media_data` volume | `frontend/nginx/default.conf`、`docker-compose.prod.yml` |
 | 13 | 登录不支持邮箱 | 仅 `ModelBackend` 支持用户名登录 | 新增 `EmailOrUsernameBackend`（`Q(username\|email)` 查询）+ settings 配置 + 前端 UI 更新 | `backend/apps/accounts/backends.py`（新建）、`backend/config/settings/base.py`、`frontend/src/pages/settings/Login.vue` |
+| 14 | 文件上传刷新消失 | `el-upload` 未携带 `project_id`，后端存为 None，列表查询按 `project_id` 过滤查不到 | 给 `el-upload` 添加 `:data="{ project_id: projectId }"` | `frontend/src/pages/files/Index.vue` |
+| 15 | 项目概览状态显示异常 | 模型仅有 `planning/active/completed/archived`，前端有无效选项 `on_hold/cancelled` 且缺 `archived` 映射 | 同步状态选项为模型实际 choices，`getStatusText` 增加 `archived` 和 `|| '未知'` 兜底 | `frontend/src/pages/project/Overview.vue`、`frontend/src/pages/project/Detail.vue` |
+| 16 | 报表日期筛选导致 0 任务 | 默认日期范围仅为当月，无日期任务被过滤 | 默认范围改为近 3 个月，无日期任务始终显示 | `frontend/src/pages/report/Index.vue` |
+| 17 | 甘特图日/周视图看不到 | `viewModeDays` 为 `{day:1, week:7}`，xAxis 仅显示 1 天/7 天窗口 | 改为 `{day:14, week:35, month:90}`，调整 `maxInterval` 和标签格式 | `frontend/src/pages/gantt/Index.vue` |
+| 18 | 甘特图依赖连线 | 后端已返回数据，前端已实现 lines series 渲染 | 确认为已实现功能，无需修改 | — |
+| 19 | 报表燃尽图与冲刺页不同步 | 报表页错误解析后端返回的 `ideal_line: [{date, remaining}]` 结构 | 统一为冲刺页的 map 提取方式 | `frontend/src/pages/report/Index.vue` |
+| 20 | 报表生成参数不匹配 | 前端传 `date_from/date_to`，后端读 `start_date/end_date` | 后端兼容两种参数名 | `backend/apps/reports/tasks.py` |
+| 21 | 报表图表缺少"审批中"状态 | `statusDistData` 仅根据实际数据生成，无 review 任务时不显示该扇区 | 初始化所有 5 种状态计数为 0，再叠加实际数据 | `frontend/src/pages/report/Index.vue` |
+| 22 | Overview 项目间导航数据不刷新 | `const projectId = route.params.id` 为快照值，同 Board.vue 旧问题 | 改为 computed ref + watch 路由变化重新加载 | `frontend/src/pages/project/Overview.vue` |
 
-> 产出：排查并修复 13 个 Bug，覆盖报表/冲刺/看板/任务/进度/甘特图/头像/字体/语言/权限/资料/文件/登录全模块。涉及 17 个文件、7 个后端文件、10 个前端文件。
+> 产出：排查并修复 22 个 Bug，覆盖报表/冲刺/看板/任务/进度/甘特图/头像/字体/语言/权限/资料/文件/登录/日期筛选/状态显示/燃尽图同步/参数匹配/路由刷新全模块。涉及 20+ 个文件。
 
 ### 团队成员测试参与
 

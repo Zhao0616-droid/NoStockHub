@@ -49,8 +49,8 @@ def _generate_task_list(writer, report):
     tasks = Task.objects.none()
     if Task is not None:
         tasks = Task.objects.filter(project=report.project)
-        start_date = params.get('start_date')
-        end_date = params.get('end_date')
+        start_date = params.get('start_date') or params.get('date_from')
+        end_date = params.get('end_date') or params.get('date_to')
         if start_date:
             tasks = tasks.filter(created_at__gte=start_date)
         if end_date:
@@ -74,8 +74,8 @@ def _generate_worklog_summary(writer, report):
     if WorkLog is not None:
         logs = WorkLog.objects.filter(task__project=report.project).select_related('user', 'task')
         params = report.parameters or {}
-        start_date = params.get('start_date')
-        end_date = params.get('end_date')
+        start_date = params.get('start_date') or params.get('date_from')
+        end_date = params.get('end_date') or params.get('date_to')
         if start_date:
             logs = logs.filter(date__gte=start_date)
         if end_date:

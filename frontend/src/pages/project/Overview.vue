@@ -105,14 +105,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { projectAPI, taskAPI } from '@/api'
 import BurndownChart from '@/components/charts/BurndownChart.vue'
 
 const route = useRoute()
-const projectId = route.params.id
+const projectId = computed(() => route.params.id)
 const project = ref(null)
 const tasks = ref([])
 const activities = ref([])
@@ -133,8 +133,7 @@ const getStatusType = (status) => {
     'planning': 'info',
     'active': 'success',
     'completed': 'success',
-    'on_hold': 'warning',
-    'cancelled': 'danger'
+    'archived': 'warning'
   }
   return types[status] || 'info'
 }
@@ -144,10 +143,9 @@ const getStatusText = (status) => {
     'planning': '规划中',
     'active': '进行中',
     'completed': '已完成',
-    'on_hold': '暂停',
-    'cancelled': '已取消'
+    'archived': '已归档'
   }
-  return texts[status] || status
+  return texts[status] || status || '未知'
 }
 
 const formatDate = (date) => {
@@ -156,16 +154,20 @@ const formatDate = (date) => {
 }
 
 const loadProject = async () => {
+  const pid = route.params.id
+  if (!pid) return
   try {
-    project.value = await projectAPI.detail(projectId)
+    project.value = await projectAPI.detail(pid)
   } catch (error) {
     ElMessage.error('加载项目信息失败')
   }
 }
 
 const loadTasks = async () => {
+  const pid = route.params.id
+  if (!pid) return
   try {
-    const res = await taskAPI.list({ project_id: projectId })
+    const res = await taskAPI.list({ project_id: pid })
     tasks.value = res.results || res
   } catch (error) {
     ElMessage.error('加载任务信息失败')
@@ -173,8 +175,10 @@ const loadTasks = async () => {
 }
 
 const loadActivities = async () => {
+  const pid = route.params.id
+  if (!pid) return
   try {
-    const res = await projectAPI.activity(projectId)
+    const res = await projectAPI.activity(pid)
     activities.value = res.results || res || []
   } catch { /* activity is optional */ }
 }
@@ -192,6 +196,14 @@ onMounted(() => {
   loadProject()
   loadTasks()
   loadActivities()
+})
+
+watch(() => route.params.id, () => {
+  if (route.params.id) {
+    loadProject()
+    loadTasks()
+    loadActivities()
+  }
 })
 </script>
 

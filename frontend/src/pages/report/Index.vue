@@ -211,7 +211,7 @@ const route = useRoute()
 
 // --------------- 日期范围 ---------------
 const dateRange = ref([
-  new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+  new Date(new Date().getFullYear(), new Date().getMonth() - 2, 1),
   new Date()
 ])
 
@@ -255,6 +255,8 @@ const filteredTasks = computed(() => {
   return allTasks.value.filter(t => {
     const cd = t.created_at ? t.created_at.slice(0, 10) : ''
     const dd = t.due_date || ''
+    // 没有日期信息的任务始终显示
+    if (!cd && !dd) return true
     return (cd >= startStr && cd <= endStr) || (dd >= startStr && dd <= endStr)
   })
 })
@@ -275,6 +277,10 @@ const stats = computed(() => {
 
 const statusDistData = computed(() => {
   const map = {}
+  // 确保所有状态都显示，即使计数为0
+  for (const key of Object.keys(statusLabels)) {
+    map[key] = 0
+  }
   filteredTasks.value.forEach(t => {
     const key = t.status || 'todo'
     map[key] = (map[key] || 0) + 1
@@ -399,9 +405,9 @@ async function loadBurndown(sprintId) {
   if (!sprintId) return
   try {
     const data = await sprintAPI.burndown(sprintId)
-    burndownDates.value = data.dates || []
-    burndownIdeal.value = data.ideal_line || []
-    burndownActual.value = data.actual_line || []
+    burndownDates.value = (data.ideal_line || []).map(p => p.date)
+    burndownIdeal.value = (data.ideal_line || []).map(p => p.remaining)
+    burndownActual.value = (data.actual_line || []).map(p => p.remaining)
   } catch {
     burndownDates.value = []
     burndownIdeal.value = []

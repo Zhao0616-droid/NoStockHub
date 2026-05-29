@@ -682,3 +682,54 @@
 ### 迭代优化
 - 在注册时校验用户名不能为邮箱格式，从源头消除歧义
 - 登录失败限流（如 django-axes）替代手动 `set_password` 防时序攻击，更精确且降低 CPU 开销
+
+---
+
+## 27. 交互场景二十五：七项遗留问题集中修复
+
+### 日期
+2026-05-29
+
+### 原始提示词
+"文件管理上传的文件还是无法留存，刷新就消失了；报表里的燃尽图和冲刺里的燃尽图没同步；我发现了报表没显示出任务是时间选择的原因，报表报告生成是不是没实现；甘特图的日和周再调整一下，现在还是看不到，只有月是好的；项目概览的状态0是什么，改一下；甘特图的虚线依赖连线实现了吗"
+
+### AI 输出摘要
+- **文件上传无法留存**：`el-upload` 未携带 `project_id`，后端 `AttachmentViewSet.create()` 从 `request.data.get('project_id')` 获取为 None，导致文件存为 `project_id=None`，列表查询按 `project_id` 过滤查不到。给 `el-upload` 添加 `:data="{ project_id: projectId }"` 解决
+- **项目概览状态显示 0**：模型 `Project.Status` 仅有 `planning/active/completed/archived`，但前端 `Detail.vue` 编辑表单有无效选项 `on_hold/cancelled`，`Overview.vue` 缺少 `archived` 映射。同步两端状态选项为模型实际 choices，`getStatusText` 增加 `archived` 映射和 `|| '未知'` 兜底
+- **报表日期筛选导致 0 任务**：默认日期范围为当月（`new Date(..., 1)` ~ `new Date()`），若当月无任务则全部过滤。改为近 3 个月，且无日期信息的任务不再被过滤（`!cd && !dd` → 始终显示）
+- **甘特图日/周视图看不到**：`viewModeDays` 为 `{ day: 1, week: 7, month: 31 }`，xAxis `min`/`max` 约束为 1 天/7 天窗口，任务条跨多天时大部分不可见。改为 `{ day: 14, week: 35, month: 90 }`，`maxInterval` 同步调整（`dayMs`/`dayMs*2`/`dayMs*7`），day 视图标签从小时改为日期
+- **甘特图虚线依赖连线**：已完整实现。后端 `gantt` action 返回 `dependencies` 数组（`predecessor_id`/`successor_id`），前端 `lines` series 以 dashed 虚线渲染，`curveness: 0.3` 贝塞尔曲线连接。无数据则无线
+- **报表燃尽图与冲刺页不同步**：后端 `burndown` 返回 `ideal_line: [{date, remaining}]` 对象数组，冲刺页正确 map 提取，报表页错误取 `data.dates` + 直接传对象数组给图表（图表期望数值数组）。统一为冲刺页的解析方式
+- **报表生成参数不匹配**：前端 `reportAPI.generate` 传递 `date_from/date_to`，后端 `tasks.py` 中 `_generate_task_list` 和 `_generate_worklog_summary` 读取 `start_date/end_date`。改为 `params.get('start_date') or params.get('date_from')` 双兼容
+
+### 可能存在的问题
+- 文件上传的 `:data` 使用 computed ref，Vue 3 模板自动解包正常，但需确保 `route.params.id` 存在
+- 甘特图视图窗口拉大后，任务密集时可能性能下降（ECharts custom series 逐条渲染）
+- 报表日期默认近 3 个月可能仍不够，大型项目建议改为无日期范围限制或按项目起止日期自适应
+
+### 迭代优化
+- 文件上传增加 `task_id` 参数支持任务附件场景
+- 甘特图视图切换可与 dataZoom 联动，替代手动 xAxis min/max 约束
+- 报表日期选择器增加"全部"快捷选项，清空日期范围显示所有任务
+
+---
+
+## 28. 交互场景二十六：报表状态分布图完善 + Overview 路由修复
+
+### 日期
+2026-05-29
+
+### 原始提示词
+"报表图缺少审批中这一状态" / （Overview.vue 路由参数过期导致项目间导航数据不刷新，AI 主动发现并修复）
+
+### AI 输出摘要
+- **报表缺少审批中状态**：`statusDistData` 仅根据实际数据动态生成饼图条目，若数据库中无 `review` 状态任务则图表不显示该扇区。改为先以 `statusLabels` 的 5 个 key 初始化 `map` 为 0，再叠加实际计数，确保 5 种状态始终出现在分布图中
+- **Overview.vue 路由参数过期**：`const projectId = route.params.id` 为快照值，与之前修复的 `Board.vue`/`report/Index.vue` 同类问题。改为 `computed(() => route.params.id)`，`loadProject/loadTasks/loadActivities` 内部从 `route.params.id` 实时取值，并添加 `watch(() => route.params.id, ...)` 监听切换
+
+### 可能存在的问题
+- 分布图始终显示 5 种状态，若项目确实无某状态任务，扇区为 0% 可能让用户困惑是否数据未加载
+- Overview 三个 load 函数各自独立取值 `route.params.id`，可抽取为公共 composable
+
+### 迭代优化
+- 分布图 0 值扇区可考虑使用更淡的颜色或虚线边框区分"零数据"与"有数据"
+- 所有路由参数获取统一抽取为 `useRouteParam('id')` composable，避免各页面重复修复同类问题

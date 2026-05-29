@@ -5,6 +5,7 @@
       <el-upload
         :action="uploadUrl"
         :headers="uploadHeaders"
+        :data="{ project_id: projectId }"
         :on-success="onUploadSuccess"
         :on-error="onUploadError"
         :show-file-list="false"

@@ -96,8 +96,7 @@
             <el-option label="规划中" value="planning" />
             <el-option label="进行中" value="active" />
             <el-option label="已完成" value="completed" />
-            <el-option label="暂停" value="on_hold" />
-            <el-option label="已取消" value="cancelled" />
+            <el-option label="已归档" value="archived" />
           </el-select>
         </el-form-item>
         <el-form-item label="可见性">
