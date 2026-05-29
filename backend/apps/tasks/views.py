@@ -77,7 +77,24 @@ class TaskViewSet(viewsets.ModelViewSet):
             )
 
         serializer.save()
-        
+
+        # 同步看板列：根据新状态将任务移到对应列
+        STATUS_TO_COLUMN = {
+            'todo': '待办',
+            'in_progress': '进行中',
+            'review': '审核中',
+            'done': '已完成',
+        }
+        target_col_name = STATUS_TO_COLUMN.get(new_status)
+        if target_col_name and task.project_id:
+            from apps.kanban.models import KanbanBoard, KanbanColumn, TaskColumn
+            boards = KanbanBoard.objects.filter(project_id=task.project_id)
+            for board in boards:
+                col = board.columns.filter(name=target_col_name).first()
+                if col:
+                    TaskColumn.objects.filter(task_id=task.id, column__board=board).delete()
+                    TaskColumn.objects.create(task_id=task.id, column=col, order=0)
+
         # 发送状态变更通知
         if task.assignee and task.assignee != request.user:
              create_notification(
@@ -88,7 +105,7 @@ class TaskViewSet(viewsets.ModelViewSet):
                 related_type='Task',
                 related_id=str(task.id)
             )
-            
+
         return Response(TaskDetailSerializer(task).data)
 
     @action(detail=True, methods=['get', 'post', 'delete'], url_path='dependencies(?:/(?P<dep_id>[^/.]+))?')

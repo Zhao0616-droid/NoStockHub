@@ -65,6 +65,25 @@ class KanbanBoardViewSet(viewsets.ModelViewSet):
 
         if request.method == 'GET':
             columns = board.columns.order_by('order')
+            # 自动将未分配任务归入状态匹配的列
+            STATUS_TO_COLUMN = {
+                'todo': '待办', 'in_progress': '进行中',
+                'review': '审核中', 'done': '已完成',
+            }
+            from apps.tasks.models import Task
+            col_map = {c.name: c for c in columns}
+            existing_task_ids = set(
+                TaskColumn.objects.filter(column__board=board).values_list('task_id', flat=True)
+            )
+            unassigned = Task.objects.filter(
+                project_id=board.project_id
+            ).exclude(id__in=existing_task_ids)
+            for t in unassigned:
+                col_name = STATUS_TO_COLUMN.get(t.status)
+                if col_name and col_name in col_map:
+                    TaskColumn.objects.create(task_id=t.id, column=col_map[col_name], order=0)
+            # 刷新列数据
+            columns = board.columns.order_by('order')
             return Response(KanbanColumnSerializer(columns, many=True).data)
 
         serializer = KanbanColumnCreateSerializer(data=request.data)

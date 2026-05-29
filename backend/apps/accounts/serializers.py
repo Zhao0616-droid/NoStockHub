@@ -58,6 +58,7 @@ class ChangePasswordSerializer(serializers.Serializer):
 class UserSerializer(serializers.ModelSerializer):
     """用户信息序列化器"""
     role_name = serializers.CharField(source='role.name', read_only=True)
+    avatar = serializers.CharField(max_length=500, required=False, allow_blank=True)
 
     class Meta:
         model = User
