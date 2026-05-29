@@ -81,6 +81,12 @@ DATABASES = {
 # 使用自定义用户模型
 AUTH_USER_MODEL = 'accounts.User'
 
+# 支持用户名或邮箱登录
+AUTHENTICATION_BACKENDS = [
+    'apps.accounts.backends.EmailOrUsernameBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},

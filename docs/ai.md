@@ -626,3 +626,59 @@
 ### 迭代优化
 - 任务入列逻辑可改为 on-create 而非 on-read，减少不必要的数据库写操作
 - 看板列名/顺序支持自定义，不限于默认 4 列
+
+---
+
+## 25. 交互场景二十三：多 Bug 集中排查修复
+
+### 日期
+2026-05-29
+
+### 原始提示词
+"报表页面一片空白" / "冲刺只能看到一个" / "任务看板和列表状态不同步" / "项目进度全是0%" / "里程碑功能不完善" / "甘特图周/日视图无显示" / "头像上传失败" / "字体调整未实现" / "语言设置失败"
+
+### AI 输出摘要
+- **报表空白**：`filteredTasks` computed 递归自引用导致无限循环 → 改为 `allTasks.value.filter(...)`
+- **冲刺只显示一个**：后端启动新冲刺时未停用旧活跃冲刺 → `Sprint.objects.filter(...).exclude(id=sprint.id).update(status=COMPLETED)`；前端 `plannedSprints` 排除所有 active 冲刺 → 改为仅排除第一个 active 冲刺
+- **状态同步**：`board.js` `moveTask` 和 `task.js` `updateStatus` 改为静态 import 互相同步（`import { useTaskStore } from '@/stores/task'` / `import { useBoardStore } from '@/stores/board'`），解决动态 import Vite 路径解析失败
+- **项目进度 0%**：`Task.progress` 字段默认 0 从未更新 → `get_project_tasks_progress` 改为 `done/total × 100`
+- **里程碑 CRUD**：后端 `milestones` action 新增 PATCH/DELETE；前端新增里程碑增删改 UI + 编辑/删除/完成切换交互
+- **甘特图周/日视图**：xAxis 增加 `minInterval`/`maxInterval` 控制，`axisLabel.formatter` 按 `day`/`week`/`month` 输出不同格式（小时/周几+日期/日期）
+- **头像上传**：data URL 存入 `URLField(max_length=200)` 被拒 → 改为真实文件上传（`fileAPI.upload` + `FormData`）+ `max_length=500` + 新增迁移 `0003_alter_user_avatar.py`
+- **字体调整**：`watch(fontSize, ...)` + `applyFontSize()` 设置 `document.documentElement.style.fontSize` 实时生效
+- **语言设置**：从 localStorage 正确恢复语言设置
+- **其他修复**：看板权限（GET columns 改为 `IsProjectMember`）、序列化器 `read_only_fields` 防 PUT 报错、Nginx `/media/` 改直接文件系统服务 + volume 挂载
+
+### 可能存在的问题
+- 跨 store 静态 import 在模块顶层执行，需确保调用发生在 async action 内部而非模块初始化阶段，否则可能触发循环依赖
+- 头像上传后路径提取依赖 `file_path` 中包含 `uploads/` 字符串，若后端返回格式变更则失效
+- 甘特图 `minInterval`/`maxInterval` 仅控制 ECharts 显示粒度，实际数据时间精度未同步调整
+
+### 迭代优化
+- 将跨 store 同步抽取为 event bus 或 provide/inject 模式，降低 Pinia store 间的直接耦合
+- 头像路径应由后端返回完整可访问 URL（含 `/media/` 前缀），避免前端拼接脆弱性
+- 甘特图时间轴可增加用户自定义粒度（半日/双周/季度）
+
+---
+
+## 26. 交互场景二十四：邮箱/用户名双模式登录
+
+### 日期
+2026-05-29
+
+### 原始提示词
+"登录界面同时支持用户名或邮箱登录"
+
+### AI 输出摘要
+- 创建 `apps/accounts/backends.py`：`EmailOrUsernameBackend(ModelBackend)`，`authenticate()` 使用 `Q(username=username) | Q(email=username)` 查询，未匹配时执行 `User().set_password(password)` 防时序攻击
+- `config/settings/base.py` 新增 `AUTHENTICATION_BACKENDS`，`EmailOrUsernameBackend` 为主、`ModelBackend` 为备
+- `LoginSerializer.username` 增加 `label='用户名或邮箱'`
+- 前端 `Login.vue`：标签改为"用户名或邮箱"，placeholder 同步更新，移除登录表单的用户名 3-20 字符限制（邮箱可超 20 字符）
+
+### 可能存在的问题
+- `Q(username=username) | Q(email=username)` 查询在用户名恰好等于他人邮箱时产生歧义，Django 的 `get()` 会因匹配多条记录抛出 `MultipleObjectsReturned`
+- 防时序攻击的 `set_password()` 调用在每次登录失败时执行 bcrypt 哈希，高并发下可能增加 CPU 负载
+
+### 迭代优化
+- 在注册时校验用户名不能为邮箱格式，从源头消除歧义
+- 登录失败限流（如 django-axes）替代手动 `set_password` 防时序攻击，更精确且降低 CPU 开销

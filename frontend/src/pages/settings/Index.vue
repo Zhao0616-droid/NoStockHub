@@ -19,14 +19,16 @@
             <el-form-item label="头像">
               <div style="display: flex; align-items: center; gap: 16px">
                 <el-avatar :size="64" :src="profile.avatar" />
-                <el-upload 
-                  action="#" 
+                <el-upload
                   :auto-upload="false"
                   accept="image/*"
+                  :disabled="uploadingAvatar"
                   @change="handleAvatarChange"
                   style="flex: 1"
                 >
-                  <el-button type="primary">选择图片</el-button>
+                  <el-button type="primary" :loading="uploadingAvatar">
+                    {{ uploadingAvatar ? '上传中...' : '选择图片' }}
+                  </el-button>
                 </el-upload>
               </div>
             </el-form-item>
@@ -159,11 +161,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
-import { authAPI, notificationAPI } from '@/api'
+import { authAPI, notificationAPI, fileAPI } from '@/api'
 
 function formatDRFErrors(data) {
   if (!data || typeof data !== 'object') return null
@@ -189,6 +191,12 @@ const language = ref('zh-CN')
 const themeMode = ref(themeStore.mode)
 const fontSize = ref(14)
 
+// --------------- 字体大小实时应用 ---------------
+function applyFontSize(size) {
+  document.documentElement.style.fontSize = size + 'px'
+}
+watch(fontSize, (val) => { applyFontSize(val) })
+
 const passwordForm = reactive({
   oldPassword: '',
   newPassword: '',
@@ -212,24 +220,29 @@ const passwordRules = {
 
 // 初始化数据
 onMounted(async () => {
+  // 先从 localStorage 恢复并应用设置
+  const saved = localStorage.getItem('theme_settings')
+  if (saved) {
+    try {
+      const settings = JSON.parse(saved)
+      language.value = settings.language || 'zh-CN'
+      fontSize.value = settings.fontSize || 14
+    } catch { /* ignore parse error */ }
+  }
+  applyFontSize(fontSize.value)
+
   try {
     // 获取用户信息
     const userProfile = await authAPI.profile()
     Object.assign(profile.value, userProfile)
     twoFactorEnabled.value = userProfile.two_factor_enabled || false
-    
+
     // 获取通知偏好
     const prefs = await notificationAPI.getNotificationPreferences()
     notificationPrefs.value = prefs.preferences || []
-    
+
     // 获取主题设置
     themeMode.value = themeStore.mode
-    const saved = localStorage.getItem('theme_settings')
-    if (saved) {
-      const settings = JSON.parse(saved)
-      language.value = settings.language || 'zh-CN'
-      fontSize.value = settings.fontSize || 14
-    }
   } catch (error) {
     ElMessage.error('获取设置信息失败')
   }
@@ -253,12 +266,32 @@ async function saveProfile() {
 }
 
 // 处理头像上传
-function handleAvatarChange(file) {
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    profile.value.avatar = e.target.result
+const uploadingAvatar = ref(false)
+async function handleAvatarChange(file) {
+  uploadingAvatar.value = true
+  try {
+    const fd = new FormData()
+    fd.append('file', file.raw)
+    // 提取文件名作为 URL
+    const filename = file.raw.name
+    // 先显示本地预览
+    const reader = new FileReader()
+    reader.onload = (e) => { profile.value.avatar = e.target.result }
+    reader.readAsDataURL(file.raw)
+    // 上传到服务器
+    const res = await fileAPI.upload(file.raw, null, null)
+    // 从 file_path 提取 /media/uploads/<name>
+    const fp = res.file_path || ''
+    const uploadsIdx = fp.lastIndexOf('uploads/')
+    if (uploadsIdx !== -1) {
+      profile.value.avatar = '/media/' + fp.slice(uploadsIdx)
+    }
+    ElMessage.success('头像上传成功')
+  } catch (e) {
+    ElMessage.error(formatDRFErrors(e.response?.data) || '头像上传失败')
+  } finally {
+    uploadingAvatar.value = false
   }
-  reader.readAsDataURL(file.raw)
 }
 
 // 双因素认证切换
@@ -300,6 +333,7 @@ async function saveThemeSettings() {
   saving.value = true
   try {
     themeStore.setTheme(themeMode.value)
+    applyFontSize(fontSize.value)
     const settings = {
       language: language.value,
       fontSize: fontSize.value

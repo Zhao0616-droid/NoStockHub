@@ -197,6 +197,47 @@
 
 > 产出：2 个后端文件修改 + 3 个前端新建页面 + 9 个前端文件修改 + 8 处 Bug 修复 + 1 个 Postman 测试集合。看板与任务列表数据同步打通，删除功能全模块覆盖，接口测试 76 断言全绿。
 
+### 集中测试与 Debug（2026-05-29）
+
+以下为赵嘉诚在阶段四进行的集中测试、Bug 排查与修复工作：
+
+| 序号 | 问题 | 根因 | 修复方案 | 涉及文件 |
+|------|------|------|---------|---------|
+| 1 | 报表页面空白 | `filteredTasks` computed 递归自引用（`filteredTasks.value.filter(...)`）导致无限循环 | 改为 `allTasks.value.filter(...)` | `frontend/src/pages/report/Index.vue` |
+| 2 | 冲刺只显示一个 | 后端启动新冲刺未停用旧活跃冲刺；前端排除所有 active 冲刺 | 后端 `start()` 更新其他冲刺为 COMPLETED；前端 `plannedSprints` 仅排除首个 active 冲刺 | `backend/apps/sprints/views.py`、`frontend/src/pages/sprint/Index.vue` |
+| 3 | 看板与任务列表状态不同步 | 动态 `import()` Vite 路径解析失败；两个 Store 未互相同步 | 改为静态 `import { useTaskStore }` / `import { useBoardStore }`，在 async action 中跨 Store 更新 | `frontend/src/stores/board.js`、`frontend/src/stores/task.js` |
+| 4 | 项目进度始终为 0% | `Task.progress` 整数字段默认 0，`Avg('progress')` 始终返回 0 | 改为按任务状态计算 `done/total × 100` | `backend/apps/projects/serializers.py`、`backend/apps/projects/views.py` |
+| 5 | 里程碑无法增删改 | 后端仅支持 GET/POST；前端无编辑/删除入口 | 后端 `milestones` action 新增 PATCH/DELETE；前端完整 CRUD UI | `backend/apps/projects/views.py`、`frontend/src/pages/project/Detail.vue`、`frontend/src/api/index.js` |
+| 6 | 甘特图周/日视图无显示 | xAxis 未设置时间粒度，标签格式不区分视图模式 | 增加 `minInterval`/`maxInterval` 控制 + `axisLabel.formatter` 按 `day`/`week`/`month` 输出不同格式 | `frontend/src/pages/gantt/Index.vue` |
+| 7 | 头像上传失败 | data URL 存入 `URLField(max_length=200)` 被拒 | 改为真实文件上传（FormData + fileAPI.upload）；`max_length` 扩至 500 + 新增迁移 | `frontend/src/pages/settings/Index.vue`、`backend/apps/accounts/models.py`、`backend/apps/accounts/migrations/0003_alter_user_avatar.py` |
+| 8 | 字体调整未生效 | 值仅存 localStorage 未应用到 DOM | `watch(fontSize)` + `applyFontSize()` 设置 `document.documentElement.style.fontSize` | `frontend/src/pages/settings/Index.vue` |
+| 9 | 语言设置未持久化 | localStorage 恢复逻辑不完整 | 修正 `onMounted` 中从 localStorage 恢复设置并实时应用 | `frontend/src/pages/settings/Index.vue` |
+| 10 | 非管理员看板空白 | `manage_columns` GET 要求 `IsProjectManager`，普通成员 403 | GET 改为 `IsProjectMember`，POST 保持 `IsProjectManager` | `backend/apps/kanban/views.py` |
+| 11 | 个人资料修改失败 | PUT 缺少 read_only_fields → username 校验失败 | 增加 `read_only_fields` + 前端 PUT → PATCH | `backend/apps/accounts/serializers.py`、`frontend/src/api/index.js` |
+| 12 | 文件上传不持久 | Nginx `/media/` 使用 proxy_pass，容器重建后丢失 | 改为 `alias` 直接文件系统服务 + docker-compose 挂载 `media_data` volume | `frontend/nginx/default.conf`、`docker-compose.prod.yml` |
+| 13 | 登录不支持邮箱 | 仅 `ModelBackend` 支持用户名登录 | 新增 `EmailOrUsernameBackend`（`Q(username\|email)` 查询）+ settings 配置 + 前端 UI 更新 | `backend/apps/accounts/backends.py`（新建）、`backend/config/settings/base.py`、`frontend/src/pages/settings/Login.vue` |
+
+> 产出：排查并修复 13 个 Bug，覆盖报表/冲刺/看板/任务/进度/甘特图/头像/字体/语言/权限/资料/文件/登录全模块。涉及 17 个文件、7 个后端文件、10 个前端文件。
+
+### 团队成员测试参与
+
+在阶段四集中测试阶段，各成员在各自负责模块范围内进行了功能测试和联调测试，发现并报告了多个 Bug（报表空白、冲刺显示、状态同步、进度 0%、甘特图视图、头像上传、字体调整、权限拦截、文件持久化、登录方式等），由赵嘉诚统一汇总、定位根因并修复。
+
+### 云端部署
+
+赵嘉诚负责的生产环境部署工作：
+
+| 类别 | 具体工作 | 涉及文件 |
+|------|---------|---------|
+| **Docker Compose 生产编排** | 五服务编排（db/redis/backend/celery/frontend）、环境变量注入（DB/Redis/JWT/CORS）、网络隔离、依赖启动顺序（depends_on + healthcheck） | `docker-compose.prod.yml` |
+| **Nginx 反向代理** | `/api/` → backend:8000 代理转发、`/media/` → `/app/media/` 直接文件系统服务 + 7 天缓存、SPA 路由 fallback（`try_files $uri /index.html`） | `frontend/nginx/default.conf` |
+| **Dockerfile 多阶段构建** | 前端：node构建阶段 + nginx运行阶段；后端：Python依赖安装 + gunicorn 启动 | `backend/Dockerfile`、`frontend/Dockerfile` |
+| **媒体文件持久化** | `media_data` named volume 挂载到 frontend 容器（`:ro`）供 Nginx 读取，vite dev server 添加 `/media` proxy | `docker-compose.prod.yml`、`frontend/vite.config.js` |
+| **静态资源服务** | `STATIC_URL`/`MEDIA_URL`/`MEDIA_ROOT` 配置 + DEBUG 模式下 `static()` 辅助开发 | `backend/config/settings/base.py`、`backend/config/urls.py` |
+| **服务器部署** | 代码推送 + 服务器 docker-compose 重建流程指导 | 部署命令文档 |
+
+> 产出：完成生产环境 Docker Compose 全栈编排、Nginx 反向代理与文件服务、媒体文件持久化方案、多阶段构建优化。
+
 ---
 
 
@@ -219,23 +260,7 @@
 
 ---
 
-## 后续计划
-- **阶段三目标**（进行中）：4 周内完成全部模块编码
-  - ✅ 后端 9 个模块全部完成（accounts/projects/tasks/worklogs/kanban/sprints/files/reports/notifications）
-  - ✅ 前端核心页面完成（Dashboard/Project/甘特图/看板/任务列表/报表/冲刺）
-  - ✅ Docker 五服务编排 + 前后端联调启动
-  - ✅ 注册登录全链路跑通 + 仪表盘真实数据对接
-  - ⬜ 通知模块前后端联调
-  - ⬜ 设置页面对接
-  - ⬜ 前端 mock 数据全面替换为真实 API
-- **阶段四**：联调测试 + Bug 修复
-  - 前后端全模块接口联调
-  - 权限控制验证（IsProjectManager / IsProjectMember）
-  - 任务状态流转完整性验证
-  - 文件上传安全校验测试
-  - 报表异步生成端到端测试
-- **阶段五**：Docker 部署 + 演示准备 + 答辩材料
-  - Nginx 反向代理配置
-  - 生产环境部署（关闭 DEBUG、精简依赖）
-  - 演示脚本准备（各模块核心功能演示路径）
-  - 答辩 PPT / 使用说明书
+## 实验报告总结（赵嘉诚）
+
+本次课程设计完成了软件项目管理平台 NoStockHub 的全栈开发，采用 Vue 3 + Element Plus 前端、Django REST Framework 后端、MySQL + Redis 数据层、Docker Compose 容器化部署的技术架构。平台覆盖项目管理、任务看板、甘特图、冲刺管理、工时记录、文件管理、报表生成、通知系统等 9 大功能模块。
+

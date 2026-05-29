@@ -8,8 +8,8 @@
       <p class="login-subtitle">NoStockHub</p>
       
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @keyup.enter="handleLogin">
-        <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username" placeholder="请输入用户名" prefix-icon="User" clearable />
+        <el-form-item label="用户名或邮箱" prop="username">
+          <el-input v-model="form.username" placeholder="请输入用户名或邮箱" prefix-icon="User" clearable />
         </el-form-item>
         <el-form-item label="密码" prop="password">
           <el-input 
@@ -100,8 +100,7 @@ onMounted(() => {
 })
 const rules = {
   username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 3, max: 20, message: '用户名3-20个字符', trigger: 'blur' }
+    { required: true, message: '请输入用户名或邮箱', trigger: 'blur' }
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
