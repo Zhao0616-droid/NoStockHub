@@ -2,7 +2,10 @@
   <div class="task-card" @click="$emit('click')">
     <div class="card-top">
       <PriorityTag :priority="task.priority" size="small" />
-      <span class="task-due">{{ task.due_date }}</span>
+      <div class="card-meta">
+        <span class="task-due" v-if="task.due_date">{{ task.due_date }}</span>
+        <span class="task-hours" v-if="task.estimated_hours">{{ task.estimated_hours }}h</span>
+      </div>
     </div>
     <p class="task-title">{{ task.title }}</p>
     <div class="card-bottom">
@@ -28,6 +31,8 @@ defineEmits(['click'])
 }
 .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .task-due { font-size: 11px; color: var(--el-text-color-secondary); }
+.task-hours { font-size: 11px; color: var(--el-color-primary); font-weight: 500; }
+.card-meta { display: flex; gap: 8px; align-items: center; }
 .task-title { font-size: 14px; margin: 0 0 8px 0; color: var(--el-text-color-primary); }
 .card-bottom { display: flex; align-items: center; gap: 6px; }
 .assignee-name { font-size: 12px; color: var(--el-text-color-regular); }

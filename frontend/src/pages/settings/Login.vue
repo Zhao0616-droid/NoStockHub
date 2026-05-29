@@ -39,10 +39,6 @@
       </el-form>
 
       <p class="register-link">没有账号？<el-link type="primary" @click="showRegister = true">立即注册</el-link></p>
-      <el-divider style="margin: 16px 0" />
-      <el-button type="warning" size="small" class="dev-btn" @click="devLogin" style="width: 100%">
-        开发模式快速登录（test/123456）
-      </el-button>
     </div>
 
     <!-- 注册对话框 -->
@@ -177,16 +173,6 @@ async function handleRegister() {
   } finally {
     regLoading.value = false
   }
-}
-
-function devLogin() {
-  localStorage.setItem('access_token', 'dev-mock-token')
-  localStorage.setItem('refresh_token', 'dev-mock-refresh')
-  auth.accessToken = 'dev-mock-token'
-  auth.refreshToken = 'dev-mock-refresh'
-  auth.user = { id: 'dev-1', username: '开发者', email: 'dev@test.com', role: 'admin' }
-  ElMessage.success('开发模式登录成功')
-  router.push('/dashboard')
 }
 </script>
 

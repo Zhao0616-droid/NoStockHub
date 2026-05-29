@@ -53,6 +53,10 @@ class KanbanColumnSerializer(serializers.ModelSerializer):
                 'title': getattr(task, 'title', '') if task else '',
                 'status': getattr(task, 'status', '') if task else '',
                 'priority': getattr(task, 'priority', '') if task else '',
+                'type': getattr(task, 'type', 'task') if task else 'task',
+                'due_date': str(getattr(task, 'due_date', '')) if task and getattr(task, 'due_date', None) else '',
+                'estimated_hours': getattr(task, 'estimated_hours', 0) or 0 if task else 0,
+                'progress': getattr(task, 'progress', 0) or 0 if task else 0,
                 'assignee': user_summary(task.assignee) if task and getattr(task, 'assignee', None) else None,
             })
         return tasks

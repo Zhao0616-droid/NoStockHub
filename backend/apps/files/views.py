@@ -50,7 +50,9 @@ class AttachmentViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
     def get_queryset(self):
-        return Attachment.objects.select_related('uploader').all()
+        return Attachment.objects.select_related('uploader').filter(
+            project__members__user=self.request.user
+        )
 
     def get_serializer_class(self):
         return AttachmentSerializer
@@ -63,7 +65,6 @@ class AttachmentViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(project_id=project_id)
         if task_id:
             queryset = queryset.filter(task_id=task_id)
-        queryset = queryset.filter(uploader=request.user)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
