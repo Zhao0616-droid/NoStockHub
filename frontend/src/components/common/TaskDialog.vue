@@ -111,11 +111,12 @@ async function loadMembers() {
 }
 
 watch(() => props.modelValue, (v) => {
-  if (v && props.task) {
+  if (!v) return
+  loadMembers()
+  if (props.task) {
     form.value = { ...getDefaultForm(), ...props.task, assignee_id: props.task.assignee?.id || '' }
-  } else if (v) {
+  } else {
     form.value = getDefaultForm()
-    loadMembers()
   }
 })
 
