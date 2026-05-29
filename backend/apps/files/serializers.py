@@ -30,3 +30,9 @@ class AttachmentSerializer(serializers.ModelSerializer):
 
     def get_uploader(self, obj):
         return user_summary(obj.uploader)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if data.get('file_path'):
+            data['file_path'] = data['file_path'].replace('\\', '/')
+        return data

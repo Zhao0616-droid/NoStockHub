@@ -208,7 +208,6 @@ import {
 import { reportAPI, taskAPI, worklogAPI, sprintAPI } from '@/api'
 
 const route = useRoute()
-const projectId = route.params.id
 
 // --------------- 日期范围 ---------------
 const dateRange = ref([
@@ -417,7 +416,7 @@ const reports = ref([])
 
 async function loadReports() {
   try {
-    const res = await reportAPI.list({ project_id: projectId })
+    const res = await reportAPI.list({ project_id: route.params.id })
     reports.value = res.results || res || []
   } catch { /* keep empty */ }
 }
@@ -434,7 +433,7 @@ async function handleExport(format) {
     const name = `${currentSprint.value?.name || '项目'}报表`
     await reportAPI.generate({
       type: typeMap[activeTab.value] || 'progress',
-      project_id: projectId,
+      project_id: route.params.id,
       name,
       parameters: {
         date_from: dateRange.value[0]?.toISOString?.()?.slice(0, 10),
@@ -491,9 +490,9 @@ async function loadAllData() {
   loading.value = true
   try {
     const [tasksRes, worklogsRes, sprintsRes] = await Promise.all([
-      taskAPI.list({ project_id: projectId, page_size: 1000 }).catch(() => ({ results: [] })),
-      worklogAPI.list({ project_id: projectId, page_size: 1000 }).catch(() => ({ results: [] })),
-      sprintAPI.list({ project_id: projectId, page_size: 100 }).catch(() => ({ results: [] })),
+      taskAPI.list({ project_id: route.params.id, page_size: 1000 }).catch(() => ({ results: [] })),
+      worklogAPI.list({ project_id: route.params.id, page_size: 1000 }).catch(() => ({ results: [] })),
+      sprintAPI.list({ project_id: route.params.id, page_size: 100 }).catch(() => ({ results: [] })),
     ])
     allTasks.value = tasksRes.results || tasksRes || []
     allWorklogs.value = worklogsRes.results || worklogsRes || []
@@ -513,6 +512,13 @@ async function loadAllData() {
 onMounted(() => {
   loadAllData()
   loadReports()
+})
+
+watch(() => route.params.id, () => {
+  if (route.params.id) {
+    loadAllData()
+    loadReports()
+  }
 })
 </script>
 

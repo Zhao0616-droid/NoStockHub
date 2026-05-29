@@ -197,6 +197,11 @@ function applyFontSize(size) {
 }
 watch(fontSize, (val) => { applyFontSize(val) })
 
+function applyLanguage(lang) {
+  document.documentElement.lang = lang
+}
+watch(language, (val) => { applyLanguage(val) })
+
 const passwordForm = reactive({
   oldPassword: '',
   newPassword: '',
@@ -230,6 +235,7 @@ onMounted(async () => {
     } catch { /* ignore parse error */ }
   }
   applyFontSize(fontSize.value)
+  applyLanguage(language.value)
 
   try {
     // 获取用户信息
@@ -280,8 +286,8 @@ async function handleAvatarChange(file) {
     reader.readAsDataURL(file.raw)
     // 上传到服务器
     const res = await fileAPI.upload(file.raw, null, null)
-    // 从 file_path 提取 /media/uploads/<name>
-    const fp = res.file_path || ''
+    // 从 file_path 提取 /media/uploads/<name>（兼容 Windows/Linux 路径分隔符）
+    const fp = (res.file_path || '').replace(/\\/g, '/')
     const uploadsIdx = fp.lastIndexOf('uploads/')
     if (uploadsIdx !== -1) {
       profile.value.avatar = '/media/' + fp.slice(uploadsIdx)
@@ -334,11 +340,16 @@ async function saveThemeSettings() {
   try {
     themeStore.setTheme(themeMode.value)
     applyFontSize(fontSize.value)
-    const settings = {
-      language: language.value,
-      fontSize: fontSize.value
-    }
-    localStorage.setItem('theme_settings', JSON.stringify(settings))
+    applyLanguage(language.value)
+    // 合并写入，避免覆盖 theme store 保存的 theme 字段
+    let existing = {}
+    try {
+      const raw = localStorage.getItem('theme_settings')
+      if (raw) existing = JSON.parse(raw)
+    } catch { /* ignore */ }
+    existing.language = language.value
+    existing.fontSize = fontSize.value
+    localStorage.setItem('theme_settings', JSON.stringify(existing))
     ElMessage.success('主题设置已保存')
   } catch (error) {
     ElMessage.error('保存失败')

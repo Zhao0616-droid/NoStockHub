@@ -61,7 +61,14 @@ export const useThemeStore = defineStore('theme', () => {
 
   function setTheme(newMode) {
     mode.value = newMode
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ theme: newMode }))
+    // 合并写入，避免覆盖 settings 页面保存的 language/fontSize
+    let existing = {}
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw) existing = JSON.parse(raw)
+    } catch { /* ignore */ }
+    existing.theme = newMode
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(existing))
     apply()
   }
 

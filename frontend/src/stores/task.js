@@ -142,6 +142,12 @@ export const useTaskStore = defineStore('task', () => {
     const idx = tasks.value.findIndex(t => t.id === id)
     if (idx !== -1) tasks.value[idx] = { ...tasks.value[idx], ...res }
     if (currentTask.value?.id === id) currentTask.value = { ...currentTask.value, ...res }
+    // 同步到 boardStore
+    const boardStore = useBoardStore()
+    for (const col of boardStore.columns) {
+      const idx2 = col.tasks?.findIndex(t => t.id === id)
+      if (idx2 !== -1) { col.tasks[idx2] = { ...col.tasks[idx2], ...res }; break }
+    }
     return res
   }
 

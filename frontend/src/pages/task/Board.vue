@@ -138,7 +138,7 @@
     <TaskDialog
       v-model="taskDialogVisible"
       :task="editingTask"
-      :project-id="projectId"
+      :project-id="route.params.id"
       @saved="onTaskSaved"
     />
 
@@ -197,7 +197,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { MoreFilled } from '@element-plus/icons-vue'
@@ -209,7 +209,6 @@ import StatusTag from '@/components/common/StatusTag.vue'
 import PriorityTag from '@/components/common/PriorityTag.vue'
 
 const route = useRoute()
-const projectId = route.params.id
 const boardStore = useBoardStore()
 const taskStore = useTaskStore()
 
@@ -254,7 +253,7 @@ async function handleCreateBoard() {
     const board = await boardStore.createBoard({
       name: newBoardForm.value.name,
       type: newBoardForm.value.type,
-      project_id: projectId
+      project_id: route.params.id
     })
     selectedBoardId.value = board.id
     showAddBoard.value = false
@@ -464,14 +463,15 @@ function typeLabel(type) {
 }
 
 // --------------- 初始化 ---------------
-onMounted(async () => {
-  await boardStore.fetchBoards(projectId)
+async function loadBoard() {
+  const pid = route.params.id
+  if (!pid) return
+  await boardStore.fetchBoards(pid)
   if (boardStore.boards.length === 0) {
-    // 首次访问自动创建默认看板
     const board = await boardStore.createBoard({
       name: '团队看板',
       type: 'team',
-      project_id: projectId,
+      project_id: pid,
     })
     selectedBoardId.value = board.id
     await boardStore.fetchBoard(board.id)
@@ -479,6 +479,14 @@ onMounted(async () => {
     selectedBoardId.value = boardStore.boards[0].id
     await boardStore.fetchBoard(selectedBoardId.value)
   }
+}
+
+onMounted(() => {
+  loadBoard()
+})
+
+watch(() => route.params.id, () => {
+  if (route.params.id) loadBoard()
 })
 </script>
 

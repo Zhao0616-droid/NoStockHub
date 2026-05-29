@@ -202,7 +202,7 @@ import TaskDialog from '@/components/common/TaskDialog.vue'
 import PriorityTag from '@/components/common/PriorityTag.vue'
 
 const route = useRoute()
-const projectId = route.params.id
+const projectId = computed(() => route.params.id)
 const taskStore = useTaskStore()
 
 const statusOptions = [
@@ -341,28 +341,25 @@ function isOverdue(row) {
 
 // --------------- 数据加载 ---------------
 async function loadTasks() {
-  await taskStore.fetchTasks({ project_id: projectId })
-}
-
-onMounted(async () => {
-  taskStore.setFilters({ project_id: projectId })
-  await loadTasks()
+  const pid = route.params.id
+  await taskStore.fetchTasks({ project_id: pid })
   // 加载项目成员用于筛选
-  if (projectId) {
+  if (pid) {
     try {
-      const res = await projectAPI.members(projectId)
+      const res = await projectAPI.members(pid)
       const list = res.results || res || []
       memberOptions.value = list.map(m => ({ id: m.user?.id, username: m.user?.username || '-' }))
     } catch { /* keep empty */ }
   }
+}
+
+onMounted(() => {
+  loadTasks()
 })
 
 // 监听项目切换
-watch(() => route.params.id, (newId) => {
-  if (newId) {
-    taskStore.setFilters({ project_id: newId })
-    loadTasks()
-  }
+watch(() => route.params.id, () => {
+  if (route.params.id) loadTasks()
 })
 </script>
 
